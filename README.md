@@ -20,7 +20,7 @@ own sound mixer, camera monitor, screenshot tool and weather (GNOME Weather).
 | Do Not Disturb and night light while on, with a button to turn them off | GNOME settings |
 | Charging (with time until full); low battery with Power saver | UPower, power-profiles-daemon |
 | Weather: now, next hours, 3 days; "Rain likely soon" | GNOME Weather (GWeather), like the calendar menu |
-| Anything a script sends | `bin/nowbar push`, `bin/nowbar-run` |
+| Anything a script sends | D-Bus (`Push`) |
 
 Not ported (Omarchy only): reminders, dictation, the package updates card,
 Bluetooth device cards and the media keys takeover (GNOME already handles
@@ -61,17 +61,21 @@ GNOME's Quick Settings; when one is on, the Now Bar shows it as an activity
 
 ## Scripts and shortcuts
 
-`bin/nowbar` and `bin/nowbar-run` live in this repository, not in the
-installed extension (or the extensions.gnome.org zip): run them from a
-checkout. `bin/nowbar` talks to the extension over D-Bus (`br.dev.vinicgobbi.NowBar`):
+The extension answers on the session bus as `br.dev.vinicgobbi.NowBar`
+(object `/br/dev/vinicgobbi/NowBar`). With `gdbus`, which comes with GLib:
 
 ```bash
-bin/nowbar next | prev | toggle | primary | dismiss | unhide | weather | settings
-bin/nowbar focus media
-bin/nowbar act media next
-bin/nowbar push build '{"title":"Build #42","subtitle":"Compiling","progress":0.4,"pill":"Build 40%"}'
-bin/nowbar remove build
-bin/nowbar status
+nowbar() {
+  gdbus call --session --dest br.dev.vinicgobbi.NowBar \
+    --object-path /br/dev/vinicgobbi/NowBar --method br.dev.vinicgobbi.NowBar."$@"
+}
+
+nowbar Next                     # also Prev, Toggle, Primary, Dismiss, Unhide, Weather, Settings
+nowbar Focus media
+nowbar Act media next
+nowbar Push build '{"title":"Build #42","subtitle":"Compiling","progress":0.4,"pill":"Build 40%"}'
+nowbar Remove build
+nowbar Status
 ```
 
 Push fields are the same as on Omarchy: `title` (required), `subtitle`,
@@ -79,14 +83,8 @@ Push fields are the same as on Omarchy: `title` (required), `subtitle`,
 (`high`/`normal`/`low`), `urgent`, `state` (`running`/`success`/`error`),
 `elapsed`. Pushed activities are text only and gone after a restart.
 
-`bin/nowbar-run` shows any command in the pill while it runs:
-
-```bash
-bin/nowbar-run -t "System update" -- sudo apt upgrade
-```
-
-For keyboard shortcuts, add custom shortcuts in Settings → Keyboard pointing
-at e.g. `~/path/to/bin/nowbar toggle`.
+For keyboard shortcuts, add custom shortcuts in Settings → Keyboard running
+the `gdbus call` above (for example with `...NowBar.Toggle`).
 
 ## Development
 

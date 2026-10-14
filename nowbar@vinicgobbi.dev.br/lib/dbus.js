@@ -1,7 +1,7 @@
 import Gio from 'gi://Gio';
 
 // The Now Bar on the session bus, for scripts and keyboard shortcuts: what
-// `omarchy-shell nowbar <method>` does on Omarchy. bin/nowbar wraps it.
+// `omarchy-shell nowbar <method>` does on Omarchy.
 //
 //   gdbus call --session --dest br.dev.vinicgobbi.NowBar \
 //     --object-path /br/dev/vinicgobbi/NowBar --method br.dev.vinicgobbi.NowBar.Next

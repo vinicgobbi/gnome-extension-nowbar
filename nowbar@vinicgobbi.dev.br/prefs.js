@@ -19,7 +19,7 @@ const MODULES = [
     ['charging', 'Battery', 'Charging, and low battery'],
     ['screenshot', 'Screenshots', 'The screenshot just taken'],
     ['weather', 'Weather', 'From GNOME Weather; shown when nothing else is going on'],
-    ['push', 'Scripts', 'Activities sent with bin/nowbar push or nowbar-run'],
+    ['push', 'Scripts', 'Activities sent over D-Bus (the Push method)'],
 ];
 
 function switchRow(settings, key, title, subtitle = '') {
