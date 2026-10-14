@@ -1,0 +1,9 @@
+{
+  "uuid": "nowbar@vinicgobbi.dev.br",
+  "name": "Now Bar",
+  "description": "A Samsung-style Now Bar for the top bar: one pill shows what is going on right now (music, a timer, a screen recording, the camera in use, charging, the weather...). Scroll over it to switch between activities, click it for the details and controls.",
+  "shell-version": ["50"],
+  "settings-schema": "org.gnome.shell.extensions.nowbar",
+  "url": "https://github.com/vinicgobbi/gnome-extension-nowbar",
+  "version-name": "0.1.0"
+}

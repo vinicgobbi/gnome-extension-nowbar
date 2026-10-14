@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The key names are NowbarModel.js's preference names in kebab-case:
+     lib/service.js turns "media-paused-minutes" into "mediaPausedMinutes" and hands
+     them all to Model.normalizePrefs(). -->
+<schemalist>
+  <schema id="org.gnome.shell.extensions.nowbar" path="/org/gnome/shell/extensions/nowbar/">
+
+    <!-- Activities -->
+    <key name="module-media" type="b"><default>true</default><summary>Media players</summary></key>
+    <key name="module-recording" type="b"><default>true</default><summary>Screen recording</summary></key>
+    <key name="module-privacy" type="b"><default>true</default><summary>Camera and microphone in use</summary></key>
+    <key name="module-modes" type="b"><default>true</default><summary>Do Not Disturb, night light, stay awake</summary></key>
+    <key name="module-charging" type="b"><default>true</default><summary>Charging and low battery</summary></key>
+    <key name="module-push" type="b"><default>true</default><summary>Activities sent by scripts</summary></key>
+    <key name="module-screenshot" type="b"><default>true</default><summary>Screenshot just taken</summary></key>
+    <key name="module-weather" type="b"><default>true</default><summary>Weather card</summary></key>
+    <key name="auto-focus" type="b"><default>true</default><summary>A new activity takes the pill</summary></key>
+    <key name="media-paused-minutes" type="i"><default>15</default><summary>Minutes a paused player keeps the pill (0: always)</summary></key>
+    <key name="media-ignore" type="s"><default>''</default><summary>Players kept out of the Now Bar, comma separated</summary></key>
+
+    <!-- Look -->
+    <key name="panel-box" type="s">
+      <choices><choice value="left"/><choice value="center"/><choice value="right"/></choices>
+      <default>'left'</default><summary>Where the pill goes in the top bar</summary>
+    </key>
+    <key name="panel-index" type="i"><default>1</default><summary>Position inside that part of the top bar</summary></key>
+    <key name="max-width" type="i"><default>220</default><summary>Width of the pill's text, in pixels</summary></key>
+    <key name="pill-width" type="s">
+      <choices><choice value="fixed"/><choice value="fit"/></choices>
+      <default>'fixed'</default><summary>Fixed width, or fit the text up to the width</summary>
+    </key>
+    <key name="when-empty" type="s">
+      <choices><choice value="brief"/><choice value="icon"/><choice value="hide"/></choices>
+      <default>'brief'</default><summary>What the pill shows when nothing is going on</summary>
+    </key>
+    <key name="show-progress" type="b"><default>true</default><summary>Progress line under the pill text</summary></key>
+    <key name="show-count" type="b"><default>true</default><summary>The 2/4 marker</summary></key>
+    <key name="cover-accent" type="b"><default>true</default><summary>Colors from the album cover and the sky</summary></key>
+    <key name="animations" type="b"><default>true</default><summary>Animations</summary></key>
+
+
+    <!-- Weather -->
+    <key name="weather-unit" type="s">
+      <choices><choice value="auto"/><choice value="metric"/><choice value="imperial"/></choices>
+      <default>'auto'</default><summary>Temperature unit (auto: GNOME Weather's)</summary>
+    </key>
+  </schema>
+</schemalist>
