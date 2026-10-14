@@ -1,0 +1,64 @@
+#!/bin/bash
+# Talks to the Now Bar over D-Bus: the GNOME version of
+# `omarchy-shell nowbar <method> [args]`.
+#
+#   nowbar next | prev | toggle | primary | dismiss | unhide | weather | settings
+#   nowbar focus <id or module>
+#   nowbar act <activity> <action>
+#   nowbar push <id> '<json>'
+#   nowbar remove <id>
+#   nowbar status
+
+set -u
+
+dest=br.dev.vinicgobbi.NowBar
+path=/br/dev/vinicgobbi/NowBar
+
+usage() {
+  sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+call() {
+  local method=$1
+  shift
+  local out
+  out=$(gdbus call --session --dest "$dest" --object-path "$path" --method "$dest.$method" "$@") || exit 1
+  # gdbus prints a GVariant tuple: ('text',) or (true,) or ().
+  case $out in
+  "()") ;;
+  "(true,)") echo ok ;;
+  "(false,)") echo "no"; exit 1 ;;
+  *)
+    out=${out#(\'}
+    out=${out%\',)}
+    printf '%s\n' "$out"
+    [[ $out == ok || $method == Status ]] || exit 1
+    ;;
+  esac
+}
+
+need() {
+  (($# >= $1 + 1)) || { usage >&2; exit 2; }
+}
+
+(($# > 0)) || { usage >&2; exit 2; }
+cmd=$1
+shift
+
+case $cmd in
+next) call Next ;;
+prev) call Prev ;;
+toggle) call Toggle ;;
+primary) call Primary ;;
+dismiss) call Dismiss ;;
+unhide) call Unhide ;;
+weather) call Weather ;;
+settings) call Settings ;;
+status) call Status ;;
+focus) need 1 "$@" && call Focus "$1" ;;
+remove) need 1 "$@" && call Remove "$1" ;;
+act) need 2 "$@" && call Act "$1" "$2" ;;
+push) need 2 "$@" && call Push "$1" "$2" ;;
+-h | --help | help) usage ;;
+*) usage >&2; exit 2 ;;
+esac
