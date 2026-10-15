@@ -317,9 +317,7 @@ export class NowbarService extends EventEmitter {
         this.activities = Model.keepOrder(Model.visibleActivities(this.allActivities, this.prefs, this.dismissed), this.heldOrder);
         this.hiddenList = Model.hiddenActivities(this.allActivities, this.prefs, this.dismissed);
 
-        const ids = {};
-        for (const a of this.activities)
-            ids[a.id] = a.priority;
+        const now = Date.now();
         this.focusId = Model.resolveFocus({
             list: this.activities,
             focusId: this.focusId,
@@ -327,11 +325,64 @@ export class NowbarService extends EventEmitter {
             autoFocus: this.prefs.autoFocus,
             onlyAlerts: this.heldOrder.length > 0,
             manualUntil: this.manualUntil,
-            now: Date.now(),
+            now,
         });
-        this.knownIds = ids;
+        this._preferPlaying(now);
+        this._rememberKnown(now);
         this._ticker.setRunning(this._needsTick());
         this.emit('changed');
+    }
+
+    // Whether newcomers can't take the pill right now: just after a switch
+    // by hand, or while the popup is open (only alerts move the card then).
+    _holding(now) {
+        return now < this.manualUntil || this.heldOrder.length > 0;
+    }
+
+    // What the next update compares against to spot newcomers. One that
+    // couldn't take the pill because of a hold stays a newcomer, so it takes
+    // the pill once the hold is over (a player that started playing while
+    // you were scrolling, or with the popup open), instead of being taken
+    // for known and never showing up.
+    _rememberKnown(now) {
+        const held = this.prefs.autoFocus && this._holding(now);
+        const ids = {};
+        let pending = false;
+        for (const a of this.activities) {
+            const known = this.knownIds[a.id];
+            if (held && a.id !== this.focusId && (known === undefined || a.priority < known)) {
+                pending = true;
+                if (known !== undefined)
+                    ids[a.id] = known;
+            } else {
+                ids[a.id] = a.priority;
+            }
+        }
+        this.knownIds = ids;
+        // Nothing else may update once the switch by hand wears off (all
+        // players paused: no ticking), so look again then.
+        if (this._pendingId)
+            GLib.source_remove(this._pendingId);
+        this._pendingId = 0;
+        if (pending && now < this.manualUntil) {
+            this._pendingId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.manualUntil - now + 50, () => {
+                this._pendingId = 0;
+                this._update();
+                return GLib.SOURCE_REMOVE;
+            });
+        }
+    }
+
+    // A paused player doesn't keep the pill while another one plays: the
+    // one playing takes it (unless you just picked the paused one by hand,
+    // or the popup is open).
+    _preferPlaying(now) {
+        const f = this.focused;
+        if (!this.prefs.autoFocus || !f || f.module !== 'media' || f.playing || this._holding(now))
+            return;
+        const playing = this.activities.find(a => a.module === 'media' && a.playing);
+        if (playing)
+            this.focusId = playing.id;
     }
 
     _needsTick() {
@@ -508,6 +559,8 @@ export class NowbarService extends EventEmitter {
     destroy() {
         if (this._queued)
             GLib.source_remove(this._queued);
+        if (this._pendingId)
+            GLib.source_remove(this._pendingId);
         this._ticker.stop();
         this._staleMedia.stop();
         this._settings.disconnect(this._settingsId);
