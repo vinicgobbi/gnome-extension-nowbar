@@ -1,7 +1,9 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
 
 import * as Model from '../model.js';
@@ -111,44 +113,88 @@ function seconds(s) {
     return Model.formatDuration(Math.max(0, s) * 1000);
 }
 
+// Black or white, whichever reads on `hex`.
+function readableOn(hex) {
+    const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex ?? '');
+    if (!m)
+        return null;
+    const [r, g, b] = [m[1], m[2], m[3]].map(x => parseInt(x, 16) / 255);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.6 ? '#1a1a1a' : '#ffffff';
+}
+
+// The card's background from the cover's base color: the same hue, toned
+// down to sit behind the theme's text (dark or light), a bit deeper at the
+// bottom.
+function surfaceGradient(base) {
+    const dark = Main.getStyleVariant() !== 'light';
+    const top = Model.surfaceTint(base, dark);
+    if (!top)
+        return null;
+    const m = /^#(..)(..)(..)$/.exec(top);
+    const hsl = Model.rgbToHsl(...[m[1], m[2], m[3]].map(x => parseInt(x, 16) / 255));
+    const bottom = Model.hslToHex(hsl.h, hsl.s * 0.7, dark ? hsl.l * 0.7 : Math.min(0.97, hsl.l + 0.04));
+    return `background-gradient-direction: vertical; background-gradient-start: ${top};` +
+        ` background-gradient-end: ${bottom};`;
+}
+
+// The app playing: its icon, from its desktop entry.
+function appFor(entry) {
+    if (!entry)
+        return null;
+    const apps = Shell.AppSystem.get_default();
+    const id = entry.endsWith('.desktop') ? entry : `${entry}.desktop`;
+    return apps.lookup_app(id) ?? apps.lookup_heuristic_basename(id) ?? null;
+}
+
 export class MediaCard {
     constructor(ctx, a) {
         this._ctx = ctx;
         this.actor = vbox({style_class: 'nowbar-card nowbar-media', x_expand: true});
 
-        const head = hbox({style_class: 'nowbar-card-head'});
+        // Where the sound comes from; a click opens the player.
+        this._source = new St.Button({style_class: 'nowbar-media-source', x_align: Clutter.ActorAlign.START,
+            can_focus: true});
+        const sourceBox = hbox({style_class: 'nowbar-media-source-box'});
+        this._appIcon = new St.Icon({style_class: 'nowbar-media-app-icon', fallback_icon_name: 'audio-x-generic-symbolic'});
+        this._sourceLabel = label('', 'nowbar-media-source-label');
+        this._sourceOpen = new St.Icon({icon_name: 'go-next-symbolic', style_class: 'nowbar-media-source-open'});
+        sourceBox.add_child(this._appIcon);
+        sourceBox.add_child(this._sourceLabel);
+        sourceBox.add_child(this._sourceOpen);
+        this._source.set_child(sourceBox);
+        this._source.connect('clicked', () => this._raise());
+        this.actor.add_child(this._source);
+
+        const head = hbox({style_class: 'nowbar-card-head nowbar-media-head'});
         this._head = head;
         this._cover = new St.Button({style_class: 'nowbar-cover', can_focus: true, accessible_name: 'Open player'});
         this._coverIcon = new St.Icon({icon_name: 'folder-music-symbolic', style_class: 'nowbar-cover-icon'});
         this._cover.set_child(this._coverIcon);
-        this._cover.connect('clicked', () => {
-            if (this._a?.canRaise) {
-                ctx.closeMenu();
-                ctx.service.act(this._a.id, 'raise');
-            }
-        });
+        this._cover.connect('clicked', () => this._raise());
         head.add_child(this._cover);
-        const texts = vbox({x_expand: true, y_align: Clutter.ActorAlign.CENTER});
-        this._title = label('', 'nowbar-card-title');
-        this._subtitle = label('', 'nowbar-card-subtitle');
-        this._album = label('', 'nowbar-card-detail');
+        const texts = vbox({x_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'nowbar-media-texts'});
+        this._title = label('', 'nowbar-media-title');
+        this._artist = label('', 'nowbar-media-artist');
+        this._album = label('', 'nowbar-media-album');
         texts.add_child(this._title);
-        texts.add_child(this._subtitle);
+        texts.add_child(this._artist);
         texts.add_child(this._album);
         head.add_child(texts);
         this.actor.add_child(head);
 
-        // Seek bar with the elapsed and remaining time on each side.
-        this._seekRow = hbox({style_class: 'nowbar-seek-row'});
-        this._elapsed = label('', 'nowbar-time');
-        this._remaining = label('', 'nowbar-time');
+        // Seek bar, with the elapsed and remaining time under its ends.
+        this._seekBox = vbox({style_class: 'nowbar-seek-box'});
         this._seek = new Slider.Slider(0);
         this._seek.x_expand = true;
         this._seek.add_style_class_name('nowbar-slider');
-        this._seekRow.add_child(this._elapsed);
-        this._seekRow.add_child(this._seek);
-        this._seekRow.add_child(this._remaining);
-        this.actor.add_child(this._seekRow);
+        const times = hbox({style_class: 'nowbar-times'});
+        this._elapsed = label('', 'nowbar-time', {x_expand: true});
+        this._remaining = label('', 'nowbar-time');
+        times.add_child(this._elapsed);
+        times.add_child(this._remaining);
+        this._seekBox.add_child(this._seek);
+        this._seekBox.add_child(times);
+        this.actor.add_child(this._seekBox);
         this._dragging = false;
         this._seek.connect('drag-begin', () => {
             this._dragging = true;
@@ -172,16 +218,17 @@ export class MediaCard {
             return b;
         };
         this._shuffle = ctl('media-playlist-shuffle-symbolic', 'shuffle', 'Shuffle', 'small');
-        this._prev = ctl('media-skip-backward-symbolic', 'previous', 'Previous');
         this._back = ctl('media-seek-backward-symbolic', 'back10', '10 seconds back', 'small');
+        this._prev = ctl('media-skip-backward-symbolic', 'previous', 'Previous');
         this._play = ctl('media-playback-start-symbolic', 'playPause', 'Play or pause', 'big');
-        this._forward = ctl('media-seek-forward-symbolic', 'forward10', '10 seconds forward', 'small');
         this._next = ctl('media-skip-forward-symbolic', 'next', 'Next');
+        this._forward = ctl('media-seek-forward-symbolic', 'forward10', '10 seconds forward', 'small');
         this._loop = ctl('media-playlist-repeat-symbolic', 'loop', 'Repeat', 'small');
         this.actor.add_child(controls);
 
         this._volumeRow = hbox({style_class: 'nowbar-volume-row'});
-        this._volumeRow.add_child(new St.Icon({icon_name: 'audio-volume-medium-symbolic', style_class: 'nowbar-volume-icon'}));
+        this._volumeIcon = new St.Icon({icon_name: 'audio-volume-medium-symbolic', style_class: 'nowbar-volume-icon'});
+        this._volumeRow.add_child(this._volumeIcon);
         this._volume = new Slider.Slider(0);
         this._volume.x_expand = true;
         this._volume.add_style_class_name('nowbar-slider');
@@ -197,13 +244,36 @@ export class MediaCard {
             this._volumeHeldUntil = Date.now() + 1500;
         });
         this._volume.connect('notify::value', () => {
+            this._syncVolumeIcon(this._volume.value);
             if (this._settingVolume)
                 return;
             this._volumeHeldUntil = Date.now() + 1500;
             ctx.service.setVolume(this._a.id, this._volume.value);
         });
         this.actor.add_child(this._volumeRow);
+        this._styles = new Map();
         this.update(a);
+    }
+
+    _raise() {
+        if (this._a?.canRaise) {
+            this._ctx.closeMenu();
+            this._ctx.service.act(this._a.id, 'raise');
+        }
+    }
+
+    // Sets a style only when it changes (St relayouts on every set).
+    _style(actor, style) {
+        if (this._styles.get(actor) === style)
+            return;
+        this._styles.set(actor, style);
+        actor.style = style;
+    }
+
+    _syncVolumeIcon(v) {
+        this._volumeIcon.icon_name = v <= 0 ? 'audio-volume-muted-symbolic'
+            : v < 0.34 ? 'audio-volume-low-symbolic'
+                : v < 0.67 ? 'audio-volume-medium-symbolic' : 'audio-volume-high-symbolic';
     }
 
     _slideTrack() {
@@ -229,15 +299,42 @@ export class MediaCard {
         return a.actions.some(x => x.id === id);
     }
 
+    // Present but faded when the player can't do it: the row keeps its
+    // shape from one track (or player) to the next.
+    _enable(btn, on) {
+        btn.reactive = btn.can_focus = on;
+        btn.opacity = on ? 255 : 90;
+    }
+
+    _setChecked(btn, on) {
+        if (on)
+            btn.add_style_pseudo_class('checked');
+        else
+            btn.remove_style_pseudo_class('checked');
+    }
+
     update(a) {
         // A new track slides in.
-        const track = `${a.title}\u0000${a.subtitle}`;
+        const track = `${a.title}\u0000${a.artist}`;
         if (this._track !== undefined && track !== this._track && this._ctx.service.prefs.animations)
             this._slideTrack();
         this._track = track;
         this._a = a;
+
+        // Source: app icon and name.
+        if (a.desktopEntry !== this._entry) {
+            this._entry = a.desktopEntry;
+            const app = appFor(a.desktopEntry);
+            this._appIcon.gicon = app?.get_icon() ?? null;
+        }
+        this._sourceLabel.text = a.playerName || 'Media';
+        this._sourceOpen.visible = !!a.canRaise;
+        this._source.reactive = this._source.can_focus = this._source.track_hover = !!a.canRaise;
+        this._source.accessible_name = a.canRaise ? `Open ${a.playerName || 'the player'}` : '';
+
         this._title.text = a.title;
-        this._subtitle.text = a.subtitle || '';
+        this._artist.text = a.artist || '';
+        this._artist.visible = !!a.artist;
         this._album.text = a.album && a.album !== a.title ? a.album : '';
         this._album.visible = !!this._album.text;
 
@@ -245,24 +342,42 @@ export class MediaCard {
         const path = a.art?.path ?? '';
         if (path !== this._coverPath) {
             this._coverPath = path;
-            this._cover.style = path ? imageStyle(path, 88, 88, 14) : null;
+            this._style(this._cover, path ? imageStyle(path, 96, 96, 16) : null);
             this._coverIcon.visible = !path;
         }
+        // Paused: the cover rests a little.
+        const coverOpacity = a.playing ? 255 : 165;
+        if (this._coverOpacity !== coverOpacity) {
+            this._coverOpacity = coverOpacity;
+            this._cover.remove_transition('opacity');
+            this._cover.ease({opacity: coverOpacity, duration: 250, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+        }
 
-        this._seekRow.visible = a.length > 0;
+        // The cover's colors: card background, bars, play button, toggles.
+        const accent = a.color ?? null;
+        this._style(this.actor, a.surface ? surfaceGradient(a.surface) : null);
+        const bar = accent ? `-barlevel-active-background-color: ${accent}; color: ${accent};` : null;
+        this._style(this._seek, bar);
+        this._style(this._volume, bar);
+        this._style(this._play, accent ? `background-color: ${accent}; color: ${readableOn(accent)};` : null);
+        const toggle = accent ? `color: ${accent};` : null;
+        this._style(this._shuffle, a.shuffle ? toggle : null);
+        this._style(this._loop, a.loop === 'track' || a.loop === 'playlist' ? toggle : null);
+
+        this._seekBox.visible = a.length > 0;
         if (a.length > 0) {
             this._elapsed.text = seconds(a.position);
             this._remaining.text = `-${seconds(a.length - a.position)}`;
             this._seek.reactive = a.seekable;
             this._seek.opacity = a.seekable ? 255 : 110;
             if (!this._dragging && !this._seekTimeout)
-                this._seek.value = a.length > 0 ? a.position / a.length : 0;
+                this._seek.value = a.position / a.length;
         }
 
         this._play.child.get_first_child().icon_name = a.playing ? 'media-playback-pause-symbolic' : 'media-playback-start-symbolic';
-        this._play.style = a.color ? `background-color: ${a.color};` : null;
-        this._prev.visible = this._has(a, 'previous');
-        this._next.visible = this._has(a, 'next');
+        this._play.accessible_name = a.playing ? 'Pause' : 'Play';
+        this._enable(this._prev, this._has(a, 'previous'));
+        this._enable(this._next, this._has(a, 'next'));
         this._back.visible = this._forward.visible = !!a.long;
         this._shuffle.visible = a.shuffle !== null;
         this._setChecked(this._shuffle, !!a.shuffle);
@@ -276,14 +391,8 @@ export class MediaCard {
             this._settingVolume = true;
             this._volume.value = a.volume;
             this._settingVolume = false;
+            this._syncVolumeIcon(a.volume);
         }
-    }
-
-    _setChecked(btn, on) {
-        if (on)
-            btn.add_style_pseudo_class('checked');
-        else
-            btn.remove_style_pseudo_class('checked');
     }
 
     // Keys in the popup: ↑/↓ volume, [ / ] seek.

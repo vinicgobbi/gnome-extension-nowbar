@@ -263,12 +263,20 @@ export class NowbarService extends EventEmitter {
         list.push(Model.chargingActivity(power));
         list.push(Model.batteryActivity(power));
         for (const p of this.mediaPlayers) {
-            const a = Model.mediaActivity(p.info());
+            const info = p.info();
+            const a = Model.mediaActivity(info);
             if (!a)
                 continue;
+            // The card shows where the sound comes from (app icon and name)
+            // and the artist on a line of its own.
+            a.playerName = Model.clean(info.player, 40);
+            a.desktopEntry = p.desktopEntry;
+            a.artist = Model.clean(info.artist);
             a.art = this.prefs.modules.media ? this.art.get(p.artUrl) : null;
-            if (this.prefs.coverAccent && a.art?.accent)
+            if (this.prefs.coverAccent && a.art?.accent) {
                 a.color = a.art.accent;
+                a.surface = a.art.base;
+            }
             list.push(a);
         }
         if (this.prefs.modules.weather) {

@@ -189,15 +189,9 @@
   color: rgba(0, 0, 0, 0.75);
 }
 
-.nowbar-card-detail,
-.nowbar-time {
+.nowbar-card-detail {
   font-size: 0.9em;
   color: rgba(0, 0, 0, 0.6);
-}
-
-.nowbar-time {
-  font-feature-settings: "tnum";
-  min-width: 42px;
 }
 
 .nowbar-card-progress {
@@ -265,24 +259,95 @@
 
 /* --- media --------------------------------------------------------------- */
 
+.nowbar-media {
+  spacing: 12px;
+  padding: 12px 16px 14px;
+}
+
+/* Where the sound comes from: app icon, name, and a chevron when it opens. */
+.nowbar-media-source {
+  border-radius: 99px;
+  padding: 3px 8px 3px 4px;
+}
+
+.nowbar-media-source:hover,
+.nowbar-media-source:focus {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.nowbar-media-source-box {
+  spacing: 6px;
+}
+
+.nowbar-media-app-icon {
+  icon-size: 16px;
+}
+
+.nowbar-media-source-label {
+  font-size: 0.85em;
+  font-weight: bold;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.nowbar-media-source-open {
+  icon-size: 12px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.nowbar-media-head {
+  spacing: 14px;
+}
+
 .nowbar-cover {
-  width: 88px;
-  height: 88px;
-  border-radius: 14px;
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
   background-color: rgba(0, 0, 0, 0.1);
 }
 
 .nowbar-cover-icon {
-  icon-size: 36px;
+  icon-size: 40px;
 }
 
-.nowbar-seek-row,
+.nowbar-media-texts {
+  spacing: 2px;
+}
+
+.nowbar-media-title {
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.nowbar-media-artist {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.nowbar-media-album {
+  font-size: 0.9em;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.nowbar-seek-box {
+  spacing: 2px;
+}
+
+.nowbar-times {
+  padding: 0 2px;
+}
+
+.nowbar-time {
+  font-size: 0.8em;
+  font-feature-settings: "tnum";
+  color: rgba(0, 0, 0, 0.6);
+}
+
 .nowbar-volume-row {
-  spacing: 8px;
+  spacing: 10px;
+  padding: 0 4px;
 }
 
 .nowbar-media-controls {
-  spacing: 10px;
+  spacing: 8px;
 }
 
 /* Fixed sizes and no padding: circles, whatever the icon. */
@@ -291,29 +356,30 @@
   padding: 0;
   width: 44px;
   height: 44px;
+  background-color: transparent;
+}
+
+.nowbar-round:hover,
+.nowbar-round:focus {
+  background-color: rgba(0, 0, 0, 0.12);
 }
 
 .nowbar-round .nowbar-btn-icon {
-  icon-size: 18px;
+  icon-size: 20px;
 }
 
 .nowbar-round.small {
   width: 36px;
   height: 36px;
-  background-color: transparent;
 }
 
 .nowbar-round.small .nowbar-btn-icon {
   icon-size: 16px;
 }
 
-.nowbar-round.small:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-/* Shuffle / repeat on: after .small, which would make them transparent. */
+/* Shuffle / repeat on: tinted (with the cover's color, set by the card). */
 .nowbar-round.small:checked {
-  background-color: rgba(0, 0, 0, 0.16);
+  background-color: rgba(0, 0, 0, 0.12);
   color: -st-accent-color;
 }
 
@@ -322,6 +388,11 @@
   height: 60px;
   background-color: -st-accent-color;
   color: -st-accent-fg-color;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.nowbar-round.big:hover {
+  background-color: -st-accent-color;
 }
 
 .nowbar-round.big .nowbar-btn-icon {
@@ -330,6 +401,7 @@
 
 .nowbar-volume-icon {
   icon-size: 16px;
+  color: rgba(0, 0, 0, 0.7);
 }
 
 /* --- weather ------------------------------------------------------------- */
