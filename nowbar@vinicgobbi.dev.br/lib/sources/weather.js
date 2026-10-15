@@ -237,9 +237,12 @@ export class WeatherSource extends EventEmitter {
     }
 }
 
-// Rain on the way: not raining now, and rain in the next two 3-hour steps.
-// GWeather has no chance of rain, so this is Model.rainActivity without one.
-export function rainActivity(w, stale) {
+// Rain on the way: not raining now, and rain in one of the next two 3-hour
+// steps. Part of the weather card (a line on it, and "Rain soon" in the pill
+// when the card is what the pill shows), never an activity of its own: a
+// forecast must not push aside what is actually going on, like music.
+// null when there is nothing to tell.
+export function rainNote(w, stale) {
     if (!w || stale || w.raining)
         return null;
     for (let i = 1; i < Math.min(3, w.hours.length); i++) {
@@ -247,11 +250,7 @@ export function rainActivity(w, stale) {
         if (!h.rainy)
             continue;
         const when = i === 1 ? 'soon' : `around ${pad2(h.hour)}:00`;
-        return {
-            id: 'rain', module: 'weather', priority: Model.PRIORITY.rain, icon: h.icon, color: '#3d8fe0',
-            urgent: false, title: `Rain likely ${when}`, subtitle: w.location, pillText: `Rain ${when}`,
-            progress: -1, details: [], actions: [], signature: `rain:${h.hour}`,
-        };
+        return {icon: h.icon, text: `Rain likely ${when}`, pill: `Rain ${when}`};
     }
     return null;
 }

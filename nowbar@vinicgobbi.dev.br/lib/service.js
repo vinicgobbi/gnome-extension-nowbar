@@ -10,7 +10,7 @@ import {PowerSource} from './sources/power.js';
 import {ModesSource} from './sources/modes.js';
 import {PrivacySource} from './sources/privacy.js';
 import {CaptureSource, copyImage, fileUri} from './sources/capture.js';
-import {WeatherSource, rainActivity} from './sources/weather.js';
+import {WeatherSource, rainNote} from './sources/weather.js';
 import {ArtSource} from './sources/art.js';
 
 // Collects every live source into one list of activities (see model.js) and
@@ -286,11 +286,13 @@ export class NowbarService extends EventEmitter {
             if (card) {
                 card.age = age;
                 card.fetching = this.weather.fetching;
+                card.rain = rainNote(w, age.stale);
+                if (card.rain)
+                    card.pillText = `${w.temp}° · ${card.rain.pill}`;
                 if (!this.prefs.coverAccent)
                     delete card.color;
             }
             list.push(card);
-            list.push(rainActivity(w, age.stale));
         }
         for (const k in this.pushes)
             list.push(Model.pushActivity(this.pushes[k], t));

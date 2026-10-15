@@ -439,6 +439,14 @@ export class WeatherCard {
         head.add_child(side);
         this.actor.add_child(head);
 
+        // Rain on the way.
+        this._rain = hbox({style_class: 'nowbar-weather-rain'});
+        this._rainIcon = new St.Icon({style_class: 'nowbar-weather-rain-icon'});
+        this._rainLabel = label('', 'nowbar-weather-rain-label');
+        this._rain.add_child(this._rainIcon);
+        this._rain.add_child(this._rainLabel);
+        this.actor.add_child(this._rain);
+
         this._facts = hbox({style_class: 'nowbar-weather-facts'});
         this.actor.add_child(this._facts);
         this._hours = hbox({style_class: 'nowbar-weather-hours'});
@@ -464,6 +472,11 @@ export class WeatherCard {
         this._placeLabel.text = w.location || 'Pick a place';
         const canPick = this._ctx.service.weather.available;
         this._place.reactive = this._place.can_focus = this._place.track_hover = canPick;
+        this._rain.visible = !!a.rain;
+        if (a.rain) {
+            this._rainIcon.icon_name = iconFor(a.rain.icon, 'weather');
+            this._rainLabel.text = a.rain.text;
+        }
         const today = w.days[0];
         this._range.text = today ? `H ${today.max}°  L ${today.min}°` : '';
 

@@ -484,6 +484,22 @@
   background-gradient-end: #f8e45c;
 }
 
+.nowbar-weather-rain {
+  spacing: 8px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background-color: rgba(61, 143, 224, 0.2);
+}
+
+.nowbar-weather-rain-icon {
+  icon-size: 16px;
+  color: #62a0ea;
+}
+
+.nowbar-weather-rain-label {
+  font-weight: bold;
+}
+
 /* --- animations ---------------------------------------------------------- */
 
 .nowbar-eq {
