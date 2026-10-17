@@ -12,12 +12,14 @@ import {Bar, MonochromeEffect, appFor, hbox, label, readableOn, symbolicIcon} fr
 
 // The pill in the top bar: the focused activity's icon and text, a thin
 // progress line and the 2/4 marker. Music shows the player's app icon (in
-// one color) on the cover's accent color. Left click opens the popup, scroll
+// one color) on the cover's accent color, the weather sits on the sky's
+// color. Left click opens the popup, scroll
 // switches, middle click runs the main action, right click hides the
 // activity until it changes.
 
-// The cover's accent is made to read as text and marks on a dark bar
-// (50-70 % light); filling the pill, the same hue goes deeper, and not neon.
+// The cover's accent (and the sky's color) is made to read as text and
+// marks on a dark bar (50-70 % light); filling the pill, the same hue goes
+// deeper, and not neon.
 function pillColor(hex) {
     const m = /^#(..)(..)(..)$/.exec(hex);
     if (!m)
@@ -257,9 +259,11 @@ class NowbarIndicator extends PanelMenu.Button {
                 this._icon.icon_name = iconFor(a.icon, a.module);
             this._icon.visible = true;
             this._setMonochrome(!!appIcon?.colored);
-            // Music: the whole pill in the cover's color; the rest: the icon.
-            this._tint = media && a.color && p.coverAccent && !a.urgent ? pillColor(a.color) : null;
-            this._style(this._icon, !media && a.color && p.coverAccent ? `color: ${a.color};` : null);
+            // Music and the weather: the whole pill in the cover's or the
+            // sky's color; the rest: just the icon.
+            const themed = media || a.module === 'weather';
+            this._tint = themed && a.color && p.coverAccent && !a.urgent ? pillColor(a.color) : null;
+            this._style(this._icon, !this._tint && a.color && p.coverAccent ? `color: ${a.color};` : null);
             classes.urgent = !!a.urgent;
             classes.charging = a.id === 'charging';
             classes.paused = media && !a.playing;
