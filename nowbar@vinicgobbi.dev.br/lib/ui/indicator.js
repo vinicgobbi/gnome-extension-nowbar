@@ -39,7 +39,10 @@ class NowbarIndicator extends PanelMenu.Button {
 
         this._pill = new St.Widget({style_class: 'nowbar-pill', layout_manager: new Clutter.BinLayout(),
             y_align: Clutter.ActorAlign.CENTER});
-        const row = hbox({style_class: 'nowbar-row', y_align: Clutter.ActorAlign.CENTER});
+        // Centered: while the pill eases to a new width, the content stays in
+        // the middle instead of hugging the left edge.
+        const row = hbox({style_class: 'nowbar-row', x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER});
         this._row = row;
         // Not 'system-status-icon': themes pad that one, and the icon must take
         // the same room as the equalizer that replaces it while music plays.
@@ -69,7 +72,9 @@ class NowbarIndicator extends PanelMenu.Button {
         });
         this.menu.box.add_child(this._content.actor);
         this.menu.box.add_style_class_name('nowbar-menu');
+        this._lockMenuX();
         this.menu.connect('open-state-changed', (m, open) => {
+            this._menuX = null;
             service.setPopupOpen(open);
             if (open) {
                 this._content.update();
@@ -91,6 +96,26 @@ class NowbarIndicator extends PanelMenu.Button {
 
         this._changedId = service.connect('changed', () => this._sync());
         this._sync();
+    }
+
+    // The shell centers the popup on the button at every relayout, so a
+    // pill that changes width (another activity, a longer text) would drag
+    // the open popup sideways. It stays where it opened until it closes.
+    _lockMenuX() {
+        this._menuX = null;
+        const bp = this.menu._boxPointer;
+        const reposition = bp._reposition.bind(bp);
+        bp._reposition = box => {
+            reposition(box);
+            if (!this.menu.isOpen)
+                return;
+            if (this._menuX === null) {
+                this._menuX = box.x1;
+            } else if (box.x1 !== this._menuX) {
+                bp.setArrowOrigin(bp._arrowOrigin + box.x1 - this._menuX);
+                box.set_origin(this._menuX, box.y1);
+            }
+        };
     }
 
     _onClick(button) {
@@ -184,6 +209,9 @@ class NowbarIndicator extends PanelMenu.Button {
         const a = this._pillActivity();
         const n = s.activities.length;
         const animate = p.animations && this.mapped;
+        // The width it has now (mid-animation included), before the new
+        // content changes it.
+        const fromWidth = animate && this._pill.has_allocation() ? this._pill.width : -1;
 
         this.visible = !!a || p.whenEmpty !== 'hide' || this.menu.isOpen;
         const classes = {urgent: false, charging: false, paused: false, idle: !a};
@@ -237,6 +265,7 @@ class NowbarIndicator extends PanelMenu.Button {
             this._shownId = id;
         }
         this._direction = 0;
+        this._easeWidth(fromWidth);
         this._pulseIfNew(a);
         if (this.menu.isOpen)
             this._content.update();
@@ -251,6 +280,34 @@ class NowbarIndicator extends PanelMenu.Button {
         row.translation_y = (this._direction || 1) * 8;
         row.opacity = 0;
         row.ease({translation_y: 0, opacity: 255, duration: 220, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+    }
+
+    // The pill goes from the width it had to the one its new content needs
+    // instead of jumping, then is left to its natural size again.
+    _easeWidth(from) {
+        const pill = this._pill;
+        if (from <= 0) {
+            pill.remove_transition('width');
+            pill.width = -1;
+            this._widthTo = null;
+            return;
+        }
+        const running = pill.get_transition('width');
+        const current = pill.natural_width_set ? pill.width : -1;
+        pill.width = -1;
+        const [, to] = pill.get_preferred_width(-1);
+        if (running && to === this._widthTo) {
+            pill.width = current;
+            return;
+        }
+        pill.remove_transition('width');
+        pill.width = -1;
+        this._widthTo = to;
+        if (Math.abs(from - to) < 1)
+            return;
+        pill.width = from;
+        pill.ease({width: to, duration: 220, mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            onComplete: () => (pill.width = -1)});
     }
 
     // Something urgent that just showed up: the pill pulses a few times.
@@ -277,6 +334,7 @@ class NowbarIndicator extends PanelMenu.Button {
         this._service.disconnect(this._changedId);
         this._eq.stop();
         this._pill.remove_all_transitions();
+        this._row.remove_all_transitions();
         this._content.destroy();
         super._onDestroy();
     }
