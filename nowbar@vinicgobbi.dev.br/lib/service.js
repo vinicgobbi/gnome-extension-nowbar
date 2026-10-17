@@ -397,15 +397,18 @@ export class NowbarService extends EventEmitter {
             s.mpris.players.some(p => p.playing);
     }
 
+    // Once a second: the players' positions are asked for, and the list
+    // updated once they're all in (not once now and again per answer).
     _tick() {
-        this.now = Date.now();
-        for (const p of this.mpris.players) {
-            if (p.playing)
-                p.refreshPosition();
-        }
-        this.capture.prune(this.now);
-        this.pushes = Model.prunePushes(this.pushes, this.now);
-        this._update();
+        const asked = this.mpris.players.filter(p => p.playing).map(p => p.refreshPosition(true));
+        Promise.all(asked).then(() => {
+            if (this._destroyed)
+                return;
+            this.now = Date.now();
+            this.capture.prune(this.now);
+            this.pushes = Model.prunePushes(this.pushes, this.now);
+            this._update();
+        });
     }
 
     get focusIndex() {
@@ -564,6 +567,7 @@ export class NowbarService extends EventEmitter {
     }
 
     destroy() {
+        this._destroyed = true;
         if (this._queued)
             GLib.source_remove(this._queued);
         if (this._pendingId)

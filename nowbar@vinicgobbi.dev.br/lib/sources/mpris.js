@@ -74,8 +74,10 @@ class Player extends EventEmitter {
         const flags = Gio.DBusProxyFlags.NONE;
         this._root = await RootProxy.newAsync(Gio.DBus.session, this.busName, MPRIS_PATH, this._cancellable, flags);
         this._player = await PlayerProxy.newAsync(Gio.DBus.session, this.busName, MPRIS_PATH, this._cancellable, flags);
-        this._propsId = this._player.connect('g-properties-changed', (proxy, changed) => {
-            const keys = Object.keys(changed.deepUnpack());
+        this._propsId = this._player.connect('g-properties-changed', (proxy, changed, invalidated) => {
+            const keys = Object.keys(changed.deepUnpack()).concat(invalidated);
+            if (keys.includes('Metadata'))
+                this._metadata = null;
             if (keys.includes('Metadata') || keys.includes('PlaybackStatus'))
                 this.refreshPosition();
             this.emit('changed');
@@ -114,13 +116,17 @@ class Player extends EventEmitter {
         return this._player?.PlaybackStatus === 'Playing';
     }
 
+    // Unpacked once per change: it is read several times a second.
     get metadata() {
+        if (this._metadata)
+            return this._metadata;
         const m = this._player?.Metadata;
         if (!m)
             return {};
         const out = {};
         for (const [k, v] of Object.entries(m))
             out[k] = unpack(v);
+        this._metadata = out;
         return out;
     }
 
@@ -166,7 +172,8 @@ class Player extends EventEmitter {
     info() {
         const p = this._player;
         const m = this.metadata;
-        const artist = Array.isArray(m['xesam:artist']) ? m['xesam:artist'].join(', ') : String(m['xesam:artist'] ?? '');
+        const artist = Array.isArray(m['xesam:artist']) ? m['xesam:artist'].slice(0, 8).join(', ')
+            : String(m['xesam:artist'] ?? '');
         const length = this.length;
         const canControl = p.CanControl !== false;
         const loop = p.LoopStatus;
@@ -200,24 +207,30 @@ class Player extends EventEmitter {
         return !!(m['xesam:title'] || (Array.isArray(m['xesam:artist']) ? m['xesam:artist'].length : m['xesam:artist']));
     }
 
-    refreshPosition() {
+    // Asks the player where it is. Resolves once it answered (or didn't);
+    // `quiet` leaves telling anyone to the caller.
+    refreshPosition(quiet = false) {
         if (!this._ready)
-            return;
-        Gio.DBus.session.call(this.busName, MPRIS_PATH, 'org.freedesktop.DBus.Properties', 'Get',
-            new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']),
-            null, Gio.DBusCallFlags.NONE, 1000, this._cancellable, (conn, res) => {
-                try {
-                    const [v] = conn.call_finish(res).deepUnpack();
-                    const lost = this._lostPosition;
-                    const pos = lost ? this._estimatedPosition() : Number(v.unpack()) / 1e6;
-                    if (pos !== this.position) {
-                        this._setPosition(pos);
-                        this.emit('changed');
+            return Promise.resolve();
+        return new Promise(resolve => {
+            Gio.DBus.session.call(this.busName, MPRIS_PATH, 'org.freedesktop.DBus.Properties', 'Get',
+                new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']),
+                null, Gio.DBusCallFlags.NONE, 500, this._cancellable, (conn, res) => {
+                    try {
+                        const [v] = conn.call_finish(res).deepUnpack();
+                        const lost = this._lostPosition;
+                        const pos = lost ? this._estimatedPosition() : Number(v.unpack()) / 1e6;
+                        if (pos !== this.position) {
+                            this._setPosition(pos);
+                            if (!quiet)
+                                this.emit('changed');
+                        }
+                    } catch {
+                        // Not every player has a position.
                     }
-                } catch {
-                    // Not every player has a position.
-                }
-            });
+                    resolve();
+                });
+        });
     }
 
     playPause() {
