@@ -33,7 +33,6 @@
       <choices><choice value="brief"/><choice value="icon"/><choice value="hide"/></choices>
       <default>'brief'</default><summary>What the pill shows when nothing is going on</summary>
     </key>
-    <key name="show-progress" type="b"><default>true</default><summary>Progress line under the pill text</summary></key>
     <key name="show-count" type="b"><default>true</default><summary>The 2/4 marker</summary></key>
     <key name="cover-accent" type="b"><default>true</default><summary>Colors from the album cover and the sky</summary></key>
     <key name="animations" type="b"><default>true</default><summary>Animations</summary></key>

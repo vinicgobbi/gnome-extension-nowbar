@@ -8,10 +8,10 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Model from '../model.js';
 import {IDLE, batteryIcon, iconFor} from '../icons.js';
 import {PopupContent} from './popup.js';
-import {Bar, MonochromeEffect, appFor, hbox, label, readableOn, symbolicIcon} from './widgets.js';
+import {MonochromeEffect, appFor, hbox, label, readableOn, symbolicIcon} from './widgets.js';
 
-// The pill in the top bar: the focused activity's icon and text, a thin
-// progress line and the 2/4 marker. Music shows the player's app icon (in
+// The pill in the top bar: the focused activity's icon and text and the
+// 2/4 marker; progress is left to the popup. Music shows the player's app icon (in
 // one color) on the cover's accent color, the weather sits on the sky's
 // color. Left click opens the popup, scroll
 // switches, middle click runs the main action, right click hides the
@@ -71,11 +71,7 @@ class NowbarIndicator extends PanelMenu.Button {
         row.add_child(this._icon);
         row.add_child(this._label);
         row.add_child(this._count);
-        this._bar = new Bar('nowbar-pill-progress');
-        this._bar.actor.y_align = Clutter.ActorAlign.END;
-        this._bar.actor.x_align = Clutter.ActorAlign.FILL;
         this._pill.add_child(row);
-        this._pill.add_child(this._bar.actor);
         this.add_child(this._pill);
 
         this._content = new PopupContent({
@@ -243,7 +239,6 @@ class NowbarIndicator extends PanelMenu.Button {
             this._icon.visible = true;
             this._label.visible = false;
             this._count.visible = false;
-            this._bar.set(-1);
             this._setMonochrome(false);
             this._tint = null;
         } else {
@@ -268,8 +263,6 @@ class NowbarIndicator extends PanelMenu.Button {
             classes.charging = a.id === 'charging';
             classes.paused = media && !a.playing;
 
-            // Music keeps its progress to the popup: the pill is the app and the color.
-            this._bar.set(p.showProgress && !media ? a.progress : -1, a.color, animate);
             const i = Model.indexOfId(s.activities, a.id);
             this._count.visible = p.showCount && n > 1;
             this._count.text = `${i + 1}/${n}`;

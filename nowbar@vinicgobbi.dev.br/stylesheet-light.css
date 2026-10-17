@@ -63,20 +63,9 @@
   font-feature-settings: "tnum";
 }
 
-.nowbar-pill-progress {
-  height: 2px;
-  margin: 0 6px;
-  border-radius: 1px;
-  background-color: rgba(255, 255, 255, 0.12);
-}
-
 .nowbar-bar-fill {
   border-radius: 1px;
   background-color: -st-accent-color;
-}
-
-.nowbar-pill.urgent .nowbar-bar-fill {
-  background-color: #ffffff;
 }
 
 /* On a light top bar (Adwaita in light mode): dark tints instead. */
@@ -94,10 +83,6 @@
 .nowbar-pill.on-light.paused .nowbar-icon,
 .nowbar-pill.on-light.paused .nowbar-label {
   color: rgba(0, 0, 0, 0.55);
-}
-
-.nowbar-pill.on-light .nowbar-pill-progress {
-  background-color: rgba(0, 0, 0, 0.12);
 }
 
 /* Music: the pill in the cover's color (set by the indicator, with the
