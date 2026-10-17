@@ -81,7 +81,7 @@ class Player extends EventEmitter {
             this.emit('changed');
         });
         this._seekedId = this._player.connectSignal('Seeked', (proxy, sender, [pos]) => {
-            this.position = Number(pos) / 1e6;
+            this._setPosition(Number(pos) / 1e6);
             this.emit('changed');
         });
         this._ready = true;
@@ -124,6 +124,39 @@ class Player extends EventEmitter {
         return out;
     }
 
+    // The track's length in seconds, 0 when unknown. Firefox drops
+    // mpris:length from the metadata after a seek (until play or pause),
+    // which would take the seek bar away: the same track keeps the last
+    // length it had.
+    get length() {
+        const m = this.metadata;
+        const track = [m['mpris:trackid'], m['xesam:title'], m['xesam:url']].join('\u0000');
+        const length = Number(m['mpris:length'] ?? 0) / 1e6;
+        if (length > 0) {
+            this._known = {track, length};
+            return length;
+        }
+        return this._known?.track === track ? this._known.length : 0;
+    }
+
+    // Firefox after a seek: no length in the metadata, and Position reads 0.
+    // Only the Seeked signal had it right.
+    get _lostPosition() {
+        return !(Number(this.metadata['mpris:length'] ?? 0) > 0) && this.length > 0;
+    }
+
+    // Where the track is, and when that was, to count on from there while
+    // the player can't tell.
+    _setPosition(pos) {
+        this.position = pos;
+        this._positionAt = GLib.get_monotonic_time();
+    }
+
+    _estimatedPosition() {
+        const elapsed = this.playing && this._positionAt ? (GLib.get_monotonic_time() - this._positionAt) / 1e6 : 0;
+        return Math.min(this.length, this.position + elapsed);
+    }
+
     get artUrl() {
         const url = this.metadata['mpris:artUrl'];
         return typeof url === 'string' ? url : '';
@@ -134,7 +167,7 @@ class Player extends EventEmitter {
         const p = this._player;
         const m = this.metadata;
         const artist = Array.isArray(m['xesam:artist']) ? m['xesam:artist'].join(', ') : String(m['xesam:artist'] ?? '');
-        const length = Number(m['mpris:length'] ?? 0) / 1e6;
+        const length = this.length;
         const canControl = p.CanControl !== false;
         const loop = p.LoopStatus;
         return {
@@ -175,9 +208,10 @@ class Player extends EventEmitter {
             null, Gio.DBusCallFlags.NONE, 1000, this._cancellable, (conn, res) => {
                 try {
                     const [v] = conn.call_finish(res).deepUnpack();
-                    const pos = Number(v.unpack()) / 1e6;
+                    const lost = this._lostPosition;
+                    const pos = lost ? this._estimatedPosition() : Number(v.unpack()) / 1e6;
                     if (pos !== this.position) {
-                        this.position = pos;
+                        this._setPosition(pos);
                         this.emit('changed');
                     }
                 } catch {
@@ -220,7 +254,7 @@ class Player extends EventEmitter {
     seekTo(seconds) {
         const p = this._player;
         const m = this.metadata;
-        const len = Number(m['mpris:length'] ?? 0) / 1e6;
+        const len = this.length;
         if (!p?.CanSeek || !(len > 0))
             return;
         const to = Math.max(0, Math.min(len - 1, seconds));
@@ -229,7 +263,7 @@ class Player extends EventEmitter {
             p.SetPositionAsync(trackId, Math.round(to * 1e6)).catch(() => {});
         else
             p.SeekAsync(Math.round((to - this.position) * 1e6)).catch(() => {});
-        this.position = to;
+        this._setPosition(to);
         this.emit('changed');
     }
 
