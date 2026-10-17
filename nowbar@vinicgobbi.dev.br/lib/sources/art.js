@@ -169,7 +169,7 @@ export class ArtSource extends EventEmitter {
                 maxBytes: MAX_BYTES, noRedirect: true, cancellable: c,
                 checkAddress: proxy === 'direct://' ? isPublicAddress : null,
             });
-            const kind = imageKind(bytes.new_from_bytes(0, Math.min(12, bytes.get_size())).toArray());
+            const kind = imageKind(bytes.toArray());
             if (!kind)
                 throw new Error('not an image');
             file = Gio.File.new_for_path(GLib.build_filenamev([this._dir, `${GLib.uuid_string_random()}.${kind}`]));
