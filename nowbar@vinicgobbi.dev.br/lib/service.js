@@ -277,6 +277,8 @@ export class NowbarService extends EventEmitter {
             a.playerName = Model.clean(info.player, 40);
             a.desktopEntry = p.desktopEntry;
             a.artist = Model.clean(info.artist);
+            // The pill shows the song alone; the artist is on the card.
+            a.pillText = a.title;
             a.art = this.prefs.modules.media ? this.art.get(p.artUrl) : null;
             if (this.prefs.coverAccent && a.art?.accent) {
                 a.color = a.art.accent;
