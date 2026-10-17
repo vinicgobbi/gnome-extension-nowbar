@@ -100,6 +100,21 @@
   background-color: rgba(0, 0, 0, 0.12);
 }
 
+/* Music: the pill in the cover's color (set by the indicator, with the
+   text color that reads on it), with no progress line. Faded text in white
+   on a dark color, in black on a light one (.tint-light). */
+.nowbar-pill.tinted .nowbar-count,
+.nowbar-pill.tinted.paused .nowbar-icon,
+.nowbar-pill.tinted.paused .nowbar-label {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.nowbar-pill.tinted.tint-light .nowbar-count,
+.nowbar-pill.tinted.tint-light.paused .nowbar-icon,
+.nowbar-pill.tinted.tint-light.paused .nowbar-label {
+  color: rgba(0, 0, 0, 0.6);
+}
+
 /* Urgent stays red over every tint above, hovered or not. */
 .nowbar-button .nowbar-pill.urgent,
 .nowbar-button:hover .nowbar-pill.urgent,
@@ -538,17 +553,3 @@
   font-weight: bold;
 }
 
-/* --- animations ---------------------------------------------------------- */
-
-.nowbar-eq {
-  spacing: 2px;
-  height: 14px;
-  width: 16px;
-}
-
-.nowbar-eq-bar {
-  width: 4px;
-  height: 14px;
-  border-radius: 2px;
-  background-color: -st-accent-color;
-}

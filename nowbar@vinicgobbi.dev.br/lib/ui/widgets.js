@@ -1,8 +1,11 @@
 import Cairo from 'cairo';
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Graphene from 'gi://Graphene';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
@@ -107,52 +110,77 @@ export function imageStyle(path, width, height, radius = 12) {
     return `${backgroundStyle(path)} width: ${width}px; height: ${height}px; border-radius: ${radius}px;`;
 }
 
-// Three bars dancing in the pill while music plays. Each one grows and
-// shrinks from the bottom at its own pace, so together they never sync up.
-const EQ_TIMES = [430, 560, 370];
-const EQ_LOW = [0.35, 0.25, 0.45];
+// --- apps ----------------------------------------------------------------------
 
-export class Equalizer {
-    constructor() {
-        this.actor = hbox({style_class: 'nowbar-eq', y_align: Clutter.ActorAlign.CENTER, visible: false});
-        this._bars = EQ_TIMES.map(() => {
-            const bar = new St.Widget({style_class: 'nowbar-eq-bar', y_align: Clutter.ActorAlign.END,
-                pivot_point: new Graphene.Point({x: 0.5, y: 1})});
-            this.actor.add_child(bar);
-            return bar;
-        });
-        this._running = false;
-        this._color = null;
+// The app behind a player, from its desktop entry, or its name when the
+// entry doesn't match (Spotify's Flatpak says "spotify", its app is
+// com.spotify.Client).
+export function appFor(entry, name) {
+    const apps = Shell.AppSystem.get_default();
+    if (entry) {
+        const id = entry.endsWith('.desktop') ? entry : `${entry}.desktop`;
+        const app = apps.lookup_app(id) ?? apps.lookup_heuristic_basename(id);
+        if (app)
+            return app;
     }
-
-    start(color) {
-        if (color !== this._color) {
-            this._color = color;
-            for (const bar of this._bars)
-                bar.style = color ? `background-color: ${color};` : null;
-        }
-        this.actor.visible = true;
-        if (this._running)
-            return;
-        this._running = true;
-        this._bars.forEach((bar, i) => {
-            bar.scale_y = 1;
-            bar.ease({scale_y: EQ_LOW[i], duration: EQ_TIMES[i], mode: Clutter.AnimationMode.EASE_IN_OUT_SINE,
-                repeatCount: -1, autoReverse: true});
-        });
+    for (const term of [entry, name]) {
+        const found = term ? Shell.AppSystem.search(term)?.[0]?.[0] : null;
+        if (found)
+            return apps.lookup_app(found);
     }
-
-    stop() {
-        this.actor.visible = false;
-        if (!this._running)
-            return;
-        this._running = false;
-        for (const bar of this._bars) {
-            bar.remove_all_transitions();
-            bar.scale_y = 1;
-        }
-    }
+    return null;
 }
+
+const iconTheme = new St.IconTheme();
+
+// The app's one-color icon from the theme ("<name>-symbolic"), if it ships
+// one.
+export function symbolicIcon(app) {
+    const gicon = app?.get_icon();
+    if (!(gicon instanceof Gio.ThemedIcon))
+        return null;
+    const name = gicon.get_names().map(n => `${n}-symbolic`).find(n => iconTheme.has_icon(n));
+    return name ? new Gio.ThemedIcon({name}) : null;
+}
+
+// Black or white, whichever reads on `hex` (#rrggbb).
+export function readableOn(hex) {
+    const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex ?? '');
+    if (!m)
+        return null;
+    const [r, g, b] = [m[1], m[2], m[3]].map(x => parseInt(x, 16) / 255);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.6 ? '#1a1a1a' : '#ffffff';
+}
+
+// Paints a colored icon in one color, its own light and dark kept as more
+// or less of it: an app icon that ships no symbolic one, shown like one.
+// The color is the actor's text color.
+export const MonochromeEffect = GObject.registerClass(
+class MonochromeEffect extends Shell.GLSLEffect {
+    vfunc_build_pipeline() {
+        this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT, 'uniform vec3 tint;', `
+            float a = cogl_color_out.a;
+            float l = a > 0.0 ? dot(cogl_color_out.rgb / a, vec3(0.299, 0.587, 0.114)) : 0.0;
+            float k = a * (0.4 + 0.6 * l);
+            cogl_color_out = vec4(tint * k, k);`, false);
+    }
+
+    vfunc_set_actor(actor) {
+        if (this._styleId)
+            this.actor?.disconnect(this._styleId);
+        super.vfunc_set_actor(actor);
+        this._styleId = actor?.connect('style-changed', () => this._sync()) ?? 0;
+        this._sync();
+    }
+
+    _sync() {
+        if (!this.actor?.get_stage())
+            return;
+        const c = this.actor.get_theme_node().get_foreground_color();
+        this.set_uniform_float(this.get_uniform_location('tint'), 3, [c.red / 255, c.green / 255, c.blue / 255]);
+        this.queue_repaint();
+    }
+});
 
 // --- marquee -------------------------------------------------------------------
 

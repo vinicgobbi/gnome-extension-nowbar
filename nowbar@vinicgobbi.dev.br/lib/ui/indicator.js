@@ -8,12 +8,30 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Model from '../model.js';
 import {IDLE, batteryIcon, iconFor} from '../icons.js';
 import {PopupContent} from './popup.js';
-import {Bar, Equalizer, hbox, label} from './widgets.js';
+import {Bar, MonochromeEffect, appFor, hbox, label, readableOn, symbolicIcon} from './widgets.js';
 
 // The pill in the top bar: the focused activity's icon and text, a thin
-// progress line and the 2/4 marker. Left click opens the popup, scroll
+// progress line and the 2/4 marker. Music shows the player's app icon (in
+// one color) on the cover's accent color. Left click opens the popup, scroll
 // switches, middle click runs the main action, right click hides the
 // activity until it changes.
+
+// The cover's accent is made to read as text and marks on a dark bar
+// (50-70 % light); filling the pill, the same hue goes deeper, and not neon.
+function pillColor(hex) {
+    const m = /^#(..)(..)(..)$/.exec(hex);
+    if (!m)
+        return hex;
+    const {h, s, l} = Model.rgbToHsl(...[m[1], m[2], m[3]].map(x => parseInt(x, 16) / 255));
+    return Model.hslToHex(h, Math.min(0.8, s), Math.min(0.4, l));
+}
+
+// `a` toward `b` by `t` (#rrggbb).
+function mixHex(a, b, t) {
+    const ch = (h, i) => parseInt(h.slice(1 + 2 * i, 3 + 2 * i), 16);
+    return `#${[0, 1, 2].map(i => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * t)
+        .toString(16).padStart(2, '0')).join('')}`;
+}
 
 export const NowbarIndicator = GObject.registerClass(
 class NowbarIndicator extends PanelMenu.Button {
@@ -44,14 +62,10 @@ class NowbarIndicator extends PanelMenu.Button {
         const row = hbox({style_class: 'nowbar-row', x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER});
         this._row = row;
-        // Not 'system-status-icon': themes pad that one, and the icon must take
-        // the same room as the equalizer that replaces it while music plays.
+        // Not 'system-status-icon': themes pad that one.
         this._icon = new St.Icon({style_class: 'nowbar-icon', icon_name: IDLE, y_align: Clutter.ActorAlign.CENTER});
         this._label = label('', 'nowbar-label');
         this._count = label('', 'nowbar-count');
-        // Three dancing bars while music plays.
-        this._eq = new Equalizer();
-        row.add_child(this._eq.actor);
         row.add_child(this._icon);
         row.add_child(this._label);
         row.add_child(this._count);
@@ -75,6 +89,7 @@ class NowbarIndicator extends PanelMenu.Button {
         this._lockMenuX();
         this.menu.connect('open-state-changed', (m, open) => {
             this._menuX = null;
+            this._syncTint();
             service.setPopupOpen(open);
             if (open) {
                 this._content.update();
@@ -93,6 +108,8 @@ class NowbarIndicator extends PanelMenu.Button {
         // Light or dark top bar (Adwaita's is light in light mode, Yaru's
         // always dark): read from the theme, not guessed from the scheme.
         this.connect('style-changed', () => this._syncTone());
+        // A tinted pill lights up a little under the pointer, as the others.
+        this.connect('notify::hover', () => this._syncTint());
 
         this._changedId = service.connect('changed', () => this._sync());
         this._sync();
@@ -225,31 +242,37 @@ class NowbarIndicator extends PanelMenu.Button {
             this._label.visible = false;
             this._count.visible = false;
             this._bar.set(-1);
-            this._eq.stop();
+            this._setMonochrome(false);
+            this._tint = null;
         } else {
             this._label.visible = true;
             this._label.text = a.pillText || a.title;
-            if (a.id === 'charging')
+            const media = a.module === 'media';
+            const appIcon = media ? this._appIcon(a) : null;
+            if (appIcon)
+                this._icon.gicon = appIcon.gicon;
+            else if (a.id === 'charging')
                 this._icon.icon_name = batteryIcon(a.progress, true);
             else
                 this._icon.icon_name = iconFor(a.icon, a.module);
-            this._style(this._icon, a.color && p.coverAccent ? `color: ${a.color};` : null);
+            this._icon.visible = true;
+            this._setMonochrome(!!appIcon?.colored);
+            // Music: the whole pill in the cover's color; the rest: the icon.
+            this._tint = media && a.color && p.coverAccent && !a.urgent ? pillColor(a.color) : null;
+            this._style(this._icon, !media && a.color && p.coverAccent ? `color: ${a.color};` : null);
             classes.urgent = !!a.urgent;
             classes.charging = a.id === 'charging';
-            classes.paused = a.module === 'media' && !a.playing;
+            classes.paused = media && !a.playing;
 
-            const dancing = a.module === 'media' && a.playing && p.animations;
-            this._icon.visible = !dancing;
-            if (dancing)
-                this._eq.start(a.color && p.coverAccent ? a.color : null);
-            else
-                this._eq.stop();
-
-            this._bar.set(p.showProgress ? a.progress : -1, a.color, animate);
+            // Music keeps its progress to the popup: the pill is the app and the color.
+            this._bar.set(p.showProgress && !media ? a.progress : -1, a.color, animate);
             const i = Model.indexOfId(s.activities, a.id);
             this._count.visible = p.showCount && n > 1;
             this._count.text = `${i + 1}/${n}`;
         }
+        classes.tinted = !!this._tint;
+        classes['tint-light'] = !!this._tint && readableOn(this._tint) !== '#ffffff';
+        this._syncTint();
         for (const [c, on] of Object.entries(classes)) {
             if (on)
                 this._pill.add_style_class_name(c);
@@ -280,6 +303,43 @@ class NowbarIndicator extends PanelMenu.Button {
         row.translation_y = (this._direction || 1) * 8;
         row.opacity = 0;
         row.ease({translation_y: 0, opacity: 255, duration: 220, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+    }
+
+    // The player's app icon: its symbolic one, or its colored one to be
+    // painted in one color; null when the app isn't found.
+    _appIcon(a) {
+        const key = `${a.desktopEntry ?? ''}\u0000${a.playerName ?? ''}`;
+        if (key !== this._appKey) {
+            this._appKey = key;
+            const app = appFor(a.desktopEntry, a.playerName);
+            const symbolic = symbolicIcon(app);
+            const gicon = symbolic ?? app?.get_icon() ?? null;
+            this._appIconCache = gicon ? {gicon, colored: !symbolic} : null;
+        }
+        return this._appIconCache;
+    }
+
+    _setMonochrome(on) {
+        if (on && !this._mono) {
+            this._mono = new MonochromeEffect();
+            this._icon.add_effect(this._mono);
+        } else if (!on && this._mono) {
+            this._icon.remove_effect(this._mono);
+            this._mono = null;
+        }
+    }
+
+    // The cover's color behind a music pill, a bit lighter while hovered or
+    // open; text and icon in black or white, whichever reads on it.
+    _syncTint() {
+        const c = this._tint;
+        let style = null;
+        if (c) {
+            const lit = this.hover || this.menu.isOpen;
+            const bg = lit ? mixHex(c, '#ffffff', 0.15) : c;
+            style = `background-color: ${bg}; color: ${readableOn(c)};`;
+        }
+        this._style(this._pill, style);
     }
 
     // The pill goes from the width it had to the one its new content needs
@@ -332,7 +392,6 @@ class NowbarIndicator extends PanelMenu.Button {
 
     _onDestroy() {
         this._service.disconnect(this._changedId);
-        this._eq.stop();
         this._pill.remove_all_transitions();
         this._row.remove_all_transitions();
         this._content.destroy();

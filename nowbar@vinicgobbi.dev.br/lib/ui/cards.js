@@ -1,6 +1,5 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
-import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -8,7 +7,7 @@ import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
 
 import * as Model from '../model.js';
 import {iconFor} from '../icons.js';
-import {Bar, Marquee, WaveSlider, backgroundStyle, button, hbox, imageStyle, label, vbox} from './widgets.js';
+import {Bar, Marquee, WaveSlider, appFor, backgroundStyle, button, hbox, imageStyle, label, vbox} from './widgets.js';
 
 // The popup's cards, one kind per look: Card for most activities,
 // MediaCard for a player, WeatherCard for the Now Brief. Each is built once
@@ -126,15 +125,6 @@ function surfaceGradient(base) {
     const bottom = Model.hslToHex(hsl.h, hsl.s * 0.7, dark ? hsl.l * 0.7 : Math.min(0.97, hsl.l + 0.04));
     return `background-gradient-direction: vertical; background-gradient-start: ${top};` +
         ` background-gradient-end: ${bottom};`;
-}
-
-// The app playing: its icon, from its desktop entry.
-function appFor(entry) {
-    if (!entry)
-        return null;
-    const apps = Shell.AppSystem.get_default();
-    const id = entry.endsWith('.desktop') ? entry : `${entry}.desktop`;
-    return apps.lookup_app(id) ?? apps.lookup_heuristic_basename(id) ?? null;
 }
 
 export class MediaCard {
@@ -312,7 +302,7 @@ export class MediaCard {
         // Source: app icon and name.
         if (a.desktopEntry !== this._entry) {
             this._entry = a.desktopEntry;
-            const app = appFor(a.desktopEntry);
+            const app = appFor(a.desktopEntry, a.playerName);
             this._appIcon.gicon = app?.get_icon() ?? null;
         }
         this._sourceLabel.text = a.playerName || 'Media';
