@@ -13,12 +13,23 @@ import {cacheDir} from '../util.js';
 // rules as the Omarchy plugin apply: https to a public host or a local file
 // only (Model.safeArtUrl), at most 8 MB and 4096 px, a real PNG/JPEG/GIF/WebP
 // by its first bytes, and no redirects. Only then is it handed to St.
+// Everything that touches the disk or decodes runs off the shell's thread.
 
 Gio._promisify(Gio.Resolver.prototype, 'lookup_by_name_async');
+Gio._promisify(Gio.ProxyResolver.prototype, 'lookup_async');
+Gio._promisify(Gio.File.prototype, 'query_info_async');
+Gio._promisify(Gio.File.prototype, 'read_async');
+Gio._promisify(Gio.File.prototype, 'replace_contents_bytes_async', 'replace_contents_finish');
+Gio._promisify(Gio.InputStream.prototype, 'read_bytes_async');
+Gio._promisify(Gio.InputStream.prototype, 'close_async');
+Gio._promisify(GdkPixbuf.Pixbuf, 'get_file_info_async', 'get_file_info_finish');
+Gio._promisify(GdkPixbuf.Pixbuf, 'new_from_stream_at_scale_async', 'new_from_stream_finish');
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_DIMENSION = 4096;
 const KEEP = 6;
+// A cover that failed (offline, say) is tried again after this long.
+const RETRY_MS = 60 * 1000;
 
 function imageKind(bytes) {
     const b = bytes.slice(0, 12);
@@ -47,8 +58,7 @@ function isPublicAddress(addr) {
 
 // Builds the "count: (r,g,b) #RRGGBB" lines Model.accentFromHistogram reads
 // (ImageMagick's histogram format), from a small copy of the cover.
-function histogram(path) {
-    const pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, 48, 48, true);
+function histogram(pixbuf) {
     const n = pixbuf.get_n_channels();
     const stride = pixbuf.get_rowstride();
     const px = pixbuf.get_pixels();
@@ -73,7 +83,7 @@ function histogram(path) {
 export class ArtSource extends EventEmitter {
     constructor() {
         super();
-        this._cache = new Map(); // url -> {path, accent, base, remote} | null (failed)
+        this._cache = new Map(); // url -> {path, accent, base, remote} | {failed, retryAt}
         this._pending = new Set();
         this._cancellable = new Gio.Cancellable();
         this._dir = GLib.build_filenamev([cacheDir(), 'covers']);
@@ -88,14 +98,21 @@ export class ArtSource extends EventEmitter {
         const safe = Model.safeArtUrl(url);
         if (!safe)
             return null;
-        if (this._cache.has(safe))
-            return this._cache.get(safe);
+        const hit = this._cache.get(safe);
+        if (hit && !hit.failed) {
+            // Last used goes last: what is on screen is never the one dropped.
+            this._cache.delete(safe);
+            this._cache.set(safe, hit);
+            return hit;
+        }
+        if (hit && Date.now() < hit.retryAt)
+            return null;
         if (!this._pending.has(safe)) {
             this._pending.add(safe);
             this._load(safe).then(entry => this._store(safe, entry)).catch(e => {
                 if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
                     console.debug(`Now Bar: cover ${safe}: ${e.message}`);
-                    this._store(safe, null);
+                    this._store(safe, {failed: true, retryAt: Date.now() + RETRY_MS});
                 }
             }).finally(() => this._pending.delete(safe));
         }
@@ -103,6 +120,13 @@ export class ArtSource extends EventEmitter {
     }
 
     _store(url, entry) {
+        // Landed after destroy(): nobody will show it, or delete it.
+        if (this._cancellable.is_cancelled()) {
+            if (entry?.remote)
+                GLib.unlink(entry.path);
+            return;
+        }
+        this._cache.delete(url);
         this._cache.set(url, entry);
         while (this._cache.size > KEEP) {
             const [oldUrl, old] = this._cache.entries().next().value;
@@ -114,43 +138,64 @@ export class ArtSource extends EventEmitter {
     }
 
     async _load(url) {
-        let path, remote = false;
+        const c = this._cancellable;
+        let file, remote = false;
         if (/^file:\/\/\//i.test(url)) {
-            const file = Gio.File.new_for_uri(url);
-            path = file.get_path();
-            const info = file.query_info('standard::type,standard::size', Gio.FileQueryInfoFlags.NONE, null);
+            file = Gio.File.new_for_uri(url);
+            const info = await file.query_info_async('standard::type,standard::size',
+                Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_LOW, c);
             if (info.get_file_type() !== Gio.FileType.REGULAR || info.get_size() > MAX_BYTES)
                 throw new Error('not a regular file, or too large');
-            const stream = file.read(null);
-            const head = stream.read_bytes(12, null).toArray();
-            stream.close(null);
+            const stream = await file.read_async(GLib.PRIORITY_LOW, c);
+            let head;
+            try {
+                head = (await stream.read_bytes_async(12, GLib.PRIORITY_LOW, c)).toArray();
+            } finally {
+                stream.close_async(GLib.PRIORITY_LOW, null).catch(() => {});
+            }
             if (!imageKind(head))
                 throw new Error('not an image');
         } else {
-            const host = /^https:\/\/([^/?#:@]+)/i.exec(url)[1];
-            // Best effort against a public name pointing into the local
-            // network: every address it resolves to must be public.
-            const addrs = await Gio.Resolver.get_default().lookup_by_name_async(host, this._cancellable);
+            const host = GLib.Uri.parse(url, GLib.UriFlags.NONE).get_host();
+            // A public name pointing into the local network: every address
+            // it resolves to now must be public, and so must the one the
+            // request connects to (the name may resolve differently then).
+            // Through a proxy, the proxy picks the address.
+            const addrs = await Gio.Resolver.get_default().lookup_by_name_async(host, c);
             if (!addrs.length || !addrs.every(isPublicAddress))
                 throw new Error('host resolves to a local address');
-            const bytes = await fetchBytes(url, {maxBytes: MAX_BYTES, noRedirect: true, cancellable: this._cancellable});
-            const data = bytes.toArray();
-            const kind = imageKind(data);
+            const [proxy] = await Gio.ProxyResolver.get_default().lookup_async(url, c);
+            const bytes = await fetchBytes(url, {
+                maxBytes: MAX_BYTES, noRedirect: true, cancellable: c,
+                checkAddress: proxy === 'direct://' ? isPublicAddress : null,
+            });
+            const kind = imageKind(bytes.new_from_bytes(0, Math.min(12, bytes.get_size())).toArray());
             if (!kind)
                 throw new Error('not an image');
-            path = GLib.build_filenamev([this._dir, `${GLib.uuid_string_random()}.${kind}`]);
-            GLib.file_set_contents(path, data);
+            file = Gio.File.new_for_path(GLib.build_filenamev([this._dir, `${GLib.uuid_string_random()}.${kind}`]));
+            await file.replace_contents_bytes_async(bytes, null, false, Gio.FileCreateFlags.PRIVATE, c);
             remote = true;
         }
-        const [format, width, height] = GdkPixbuf.Pixbuf.get_file_info(path);
-        if (!format || width > MAX_DIMENSION || height > MAX_DIMENSION || width <= 0 || height <= 0) {
+        const path = file.get_path();
+        try {
+            const [format, width, height] = await GdkPixbuf.Pixbuf.get_file_info_async(path, c);
+            if (!format || width > MAX_DIMENSION || height > MAX_DIMENSION || width <= 0 || height <= 0)
+                throw new Error('unsupported or oversized image');
+            const stream = await file.read_async(GLib.PRIORITY_LOW, c);
+            let small;
+            try {
+                small = await GdkPixbuf.Pixbuf.new_from_stream_at_scale_async(stream, 48, 48, true, c);
+            } finally {
+                stream.close_async(GLib.PRIORITY_LOW, null).catch(() => {});
+            }
+            const hist = histogram(small);
+            const accent = Model.accentFromHistogram(hist);
+            return {path, remote, accent, base: accent ? Model.baseFromHistogram(hist) : ''};
+        } catch (e) {
             if (remote)
                 GLib.unlink(path);
-            throw new Error('unsupported or oversized image');
+            throw e;
         }
-        const hist = histogram(path);
-        const accent = Model.accentFromHistogram(hist);
-        return {path, remote, accent, base: accent ? Model.baseFromHistogram(hist) : ''};
     }
 
     _clearDir() {
