@@ -68,6 +68,8 @@ export class NowbarService extends EventEmitter {
         this._settingsId = settings.connect('changed', () => {
             this.prefs = this._readPrefs();
             this.weather.setEnabled(this.prefs.modules.weather);
+            if (!this.prefs.modules.push)
+                this.pushes = {};
             this._queueUpdate();
         });
         this.weather.setEnabled(this.prefs.modules.weather);
@@ -214,6 +216,9 @@ export class NowbarService extends EventEmitter {
     // --- pushed by scripts -------------------------------------------------
 
     push(id, json) {
+        // Off in the options: nothing is kept (or ticks) for it.
+        if (!this.prefs.modules.push)
+            return 'scripts are turned off in the Now Bar options';
         const r = Model.sanitizePush(id, json, Date.now());
         if (!r.ok)
             return r.error;
