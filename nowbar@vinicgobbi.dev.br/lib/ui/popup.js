@@ -2,7 +2,7 @@ import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 
 import {cardKind, MediaCard} from './cards.js';
-import {button, hbox, label, vbox} from './widgets.js';
+import {button, easeToNatural, hbox, label, vbox} from './widgets.js';
 
 // What the pill's menu holds: the carousel (‹ dots ›, one card at a time).
 // Switches (Do Not Disturb, night light...) are left to GNOME's Quick
@@ -36,7 +36,9 @@ export class PopupContent {
         this.actor.add_child(nav);
         this._nav = nav;
 
-        this._cardBin = new St.Bin({style_class: 'nowbar-card-bin', x_expand: true});
+        // Clipped: while its height eases between two cards, the new one is
+        // uncovered instead of squeezed.
+        this._cardBin = new St.Bin({style_class: 'nowbar-card-bin', x_expand: true, clip_to_allocation: true});
         this.actor.add_child(this._cardBin);
         this._empty = label('Nothing going on right now', 'nowbar-empty', {x_align: Clutter.ActorAlign.CENTER});
         this.actor.add_child(this._empty);
@@ -72,11 +74,19 @@ export class PopupContent {
                 this._dots.add_child(dot);
             }
         }
+        // The long dot stretches over to the new card instead of jumping:
+        // one shrinks while the other grows, so the row doesn't move.
+        const animate = this._animating();
         for (const dot of this._dots.get_children()) {
-            if (dot._id === s.focusId)
+            const on = dot._id === s.focusId;
+            if (on === dot.has_style_pseudo_class('checked'))
+                continue;
+            const from = animate && dot.has_allocation() ? dot.width : -1;
+            if (on)
                 dot.add_style_pseudo_class('checked');
             else
                 dot.remove_style_pseudo_class('checked');
+            easeToNatural(dot, 'width', from);
         }
         this._prev.visible = this._next.visible = this._dots.visible = list.length > 1;
         this._hidden.visible = s.hiddenList.length > 0;
@@ -93,12 +103,16 @@ export class PopupContent {
             if (this._cardId === focused.id && this._cardKind === Kind) {
                 this._card.update(focused);
             } else {
+                const fromHeight = this._animating() && this._cardBin.has_allocation() ? this._cardBin.height : -1;
                 this._card?.destroy();
                 this._card = new Kind(this._ctx, focused);
                 this._cardId = focused.id;
                 this._cardKind = Kind;
+                this._card.actor.y_align = Clutter.ActorAlign.START;
                 this._cardBin.set_child(this._card.actor);
                 this._slideIn();
+                // Cards differ in height: the popup grows or shrinks to the new one.
+                easeToNatural(this._cardBin, 'height', fromHeight);
             }
         }
         this.actor.remove_style_class_name('urgent');
@@ -119,10 +133,14 @@ export class PopupContent {
         });
     }
 
+    _animating() {
+        return this._service.prefs.animations && this.actor.mapped;
+    }
+
     _slideIn() {
         const dir = this._direction ?? 0;
         this._direction = 0;
-        if (!this._service.prefs.animations || !this.actor.mapped)
+        if (!this._animating())
             return;
         const card = this._card.actor;
         card.opacity = 0;
@@ -165,6 +183,7 @@ export class PopupContent {
     }
 
     destroy() {
+        this._cardBin.remove_all_transitions();
         this._card?.destroy();
         this.actor.destroy();
     }

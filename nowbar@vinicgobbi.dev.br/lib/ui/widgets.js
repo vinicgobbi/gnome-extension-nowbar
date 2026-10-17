@@ -13,6 +13,22 @@ export function hbox(params = {}) {
     return new St.BoxLayout({orientation: Clutter.Orientation.HORIZONTAL, ...params});
 }
 
+// An actor goes from the width or height it had (from) to the one its new
+// content or style asks for, then is left to its natural size again. No
+// animation when from <= 0.
+export function easeToNatural(actor, prop, from, duration = 200) {
+    actor.remove_transition(prop);
+    actor[prop] = -1;
+    if (from <= 0)
+        return;
+    const [, to] = prop === 'width' ? actor.get_preferred_width(-1) : actor.get_preferred_height(actor.width);
+    if (Math.abs(from - to) < 1)
+        return;
+    actor[prop] = from;
+    actor.ease({[prop]: to, duration, mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        onComplete: () => (actor[prop] = -1)});
+}
+
 export function label(text, styleClass, params = {}) {
     const l = new St.Label({text: text ?? '', style_class: styleClass ?? '', y_align: Clutter.ActorAlign.CENTER, ...params});
     l.clutter_text.ellipsize = 3; // Pango.EllipsizeMode.END
