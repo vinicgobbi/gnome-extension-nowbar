@@ -13,7 +13,7 @@ own sound mixer, camera monitor, screenshot tool and weather (GNOME Weather).
 
 | Activity | Source |
 | --- | --- |
-| Media player: cover, seek bar, shuffle, previous, play/pause, next, repeat, 10 s back/forward on long media, volume | MPRIS (D-Bus) |
+| Media player: cover behind the card, scrolling "title • artist", wavy seek bar, shuffle, previous, play/pause, next, repeat, volume (10 s back/forward on `[` and `]`) | MPRIS (D-Bus) |
 | Screen recording with elapsed time and Stop; then "Recording saved" with Play / Folder | GNOME's screenshot UI |
 | Screenshot just taken: Open / Copy / Folder | GNOME's screenshot UI |
 | Camera and/or microphone in use, which apps, mute the mic | `Shell.CameraMonitor`, the shell's mixer |

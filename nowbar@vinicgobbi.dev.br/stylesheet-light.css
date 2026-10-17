@@ -260,7 +260,24 @@
 /* --- media --------------------------------------------------------------- */
 
 .nowbar-media {
-  spacing: 12px;
+  padding: 0;
+}
+
+/* The cover over the whole card, and a veil that darkens it more toward
+   the controls. */
+.nowbar-media-bg,
+.nowbar-media-scrim {
+  border-radius: 18px;
+}
+
+.nowbar-media-scrim {
+  background-gradient-direction: vertical;
+  background-gradient-start: rgba(0, 0, 0, 0.35);
+  background-gradient-end: rgba(0, 0, 0, 0.72);
+}
+
+.nowbar-media-body {
+  spacing: 10px;
   padding: 12px 16px 14px;
 }
 
@@ -294,37 +311,14 @@
   color: rgba(0, 0, 0, 0.5);
 }
 
-.nowbar-media-head {
-  spacing: 14px;
+/* "Title • artist", scrolling when it doesn't fit. */
+.nowbar-media-line {
+  font-size: 1.1em;
 }
 
-.nowbar-cover {
-  width: 96px;
-  height: 96px;
-  border-radius: 16px;
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-.nowbar-cover-icon {
-  icon-size: 40px;
-}
-
-.nowbar-media-texts {
-  spacing: 2px;
-}
-
-.nowbar-media-title {
-  font-size: 1.2em;
-  font-weight: bold;
-}
-
-.nowbar-media-artist {
-  color: rgba(0, 0, 0, 0.8);
-}
-
-.nowbar-media-album {
-  font-size: 0.9em;
-  color: rgba(0, 0, 0, 0.55);
+.nowbar-seek {
+  -barlevel-height: 5px;
+  -slider-handle-radius: 9px;
 }
 
 .nowbar-seek-box {
@@ -383,26 +377,70 @@
   color: -st-accent-color;
 }
 
-.nowbar-round.big {
-  width: 60px;
-  height: 60px;
-  background-color: -st-accent-color;
-  color: -st-accent-fg-color;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+/* Previous, play and next: the same translucent circles. */
+.nowbar-round.solid {
+  width: 50px;
+  height: 50px;
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
-.nowbar-round.big:hover {
-  background-color: -st-accent-color;
+.nowbar-round.solid:hover,
+.nowbar-round.solid:focus {
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
-.nowbar-round.big .nowbar-btn-icon {
-  icon-size: 26px;
+.nowbar-round.solid .nowbar-btn-icon {
+  icon-size: 22px;
 }
 
 .nowbar-volume-icon {
   icon-size: 16px;
   color: rgba(0, 0, 0, 0.7);
 }
+
+/* --- over the cover -------------------------------------------------------
+   White on the darkened cover in light and dark shells alike:
+   tools/gen-light-css.sh leaves this section as it is. */
+
+.nowbar-media.has-cover,
+.nowbar-media.has-cover .nowbar-media-line,
+.nowbar-media.has-cover .nowbar-btn-icon,
+.nowbar-media.has-cover .nowbar-media-app-icon {
+  color: #ffffff;
+}
+
+.nowbar-media.has-cover .nowbar-media-source-label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.nowbar-media.has-cover .nowbar-media-source-open,
+.nowbar-media.has-cover .nowbar-time,
+.nowbar-media.has-cover .nowbar-volume-icon {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nowbar-media.has-cover .nowbar-media-source:hover,
+.nowbar-media.has-cover .nowbar-media-source:focus,
+.nowbar-media.has-cover .nowbar-round:hover,
+.nowbar-media.has-cover .nowbar-round:focus,
+.nowbar-media.has-cover .nowbar-round.small:checked {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.nowbar-media.has-cover .nowbar-round.solid {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.nowbar-media.has-cover .nowbar-round.solid:hover,
+.nowbar-media.has-cover .nowbar-round.solid:focus {
+  background-color: rgba(255, 255, 255, 0.26);
+}
+
+.nowbar-media.has-cover .nowbar-slider {
+  -barlevel-background-color: rgba(255, 255, 255, 0.28);
+}
+
+/* --- end of over the cover --- */
 
 /* --- weather ------------------------------------------------------------- */
 
