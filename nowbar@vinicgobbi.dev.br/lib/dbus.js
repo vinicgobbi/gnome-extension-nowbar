@@ -74,8 +74,7 @@ export class NowbarDBus {
 
     Dismiss() {
         const f = this._service.focused;
-        // The camera/mic card only goes away with a click on it.
-        return f && f.module !== 'privacy' ? this._service.dismiss(f.id) : false;
+        return f ? this._service.dismiss(f.id) : false;
     }
 
     Unhide() {

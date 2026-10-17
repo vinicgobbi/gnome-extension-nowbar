@@ -462,7 +462,9 @@ export class NowbarService extends EventEmitter {
 
     dismiss(activityId) {
         const a = this.activities.find(x => x.id === activityId);
-        if (!a || a.ambient)
+        // The camera/mic card only goes away by its own buttons (mute,
+        // or the app letting go): never hidden by a key, a click or D-Bus.
+        if (!a || a.ambient || a.module === 'privacy')
             return false;
         if (a.module === 'push')
             return this.removePush(a.id.slice(5));

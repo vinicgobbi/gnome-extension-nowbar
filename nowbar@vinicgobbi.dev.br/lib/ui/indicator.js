@@ -139,8 +139,7 @@ class NowbarIndicator extends PanelMenu.Button {
             if (f)
                 this._service.primary(f.id);
         } else if (button === Clutter.BUTTON_SECONDARY) {
-            // The camera/mic card only goes away by its own buttons.
-            if (f && f.module !== 'privacy')
+            if (f)
                 this._service.dismiss(f.id);
         } else {
             this.menu.toggle();
