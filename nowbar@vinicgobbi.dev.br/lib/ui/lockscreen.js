@@ -50,7 +50,7 @@ export class LockScreenNowbar {
 
         this._box = vbox({style_class: 'nowbar-lock-box'});
         centered(this._box);
-        this._pill = new Pill(service, {styleClass: 'nowbar-lock-pill', widthScale: 1.4});
+        this._pill = new Pill(service, {styleClass: 'nowbar-lock-pill', widthScale: 1.4, wave: true});
         this._button = new St.Button({style_class: 'nowbar-lock-button', child: this._pill.actor,
             accessible_name: 'Now Bar'});
         this._button.connect('clicked', () => this._setExpanded(!this._expanded));

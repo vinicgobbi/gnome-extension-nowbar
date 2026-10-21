@@ -4,7 +4,7 @@ import St from 'gi://St';
 
 import * as Model from '../model.js';
 import {IDLE, batteryIcon, iconFor} from '../icons.js';
-import {MonochromeEffect, appFor, hbox, label, readableOn, symbolicIcon} from './widgets.js';
+import {MonochromeEffect, PillWave, appFor, hbox, label, readableOn, symbolicIcon} from './widgets.js';
 
 // The pill itself: an activity's icon and text and the 2/4 marker. Music
 // shows the player's app icon (in one color) on the cover's accent color,
@@ -76,7 +76,8 @@ export class ScrollStepper {
 
 export class Pill {
     // `widthScale`: the text's width is the options' one times this.
-    constructor(service, {styleClass = '', widthScale = 1} = {}) {
+    // `wave`: music's hills along the bottom (see PillWave).
+    constructor(service, {styleClass = '', widthScale = 1, wave = false} = {}) {
         this._service = service;
         this._widthScale = widthScale;
         this._styles = new Map();
@@ -88,6 +89,10 @@ export class Pill {
 
         this.actor = new St.Widget({style_class: `nowbar-pill ${styleClass}`.trim(),
             layout_manager: new Clutter.BinLayout(), y_align: Clutter.ActorAlign.CENTER});
+        if (wave) {
+            this._wave = new PillWave();
+            this.actor.add_child(this._wave);
+        }
         // Centered: while the pill eases to a new width, the content stays in
         // the middle instead of hugging the left edge.
         const row = hbox({style_class: 'nowbar-row', x_align: Clutter.ActorAlign.CENTER,
@@ -191,7 +196,17 @@ export class Pill {
         }
         this.direction = 0;
         this._easeWidth(fromWidth);
+        this._syncWave(a, animate);
         this._pulseIfNew(a);
+    }
+
+    _syncWave(a, animate) {
+        if (!this._wave)
+            return;
+        const on = a?.module === 'media';
+        this._wave.visible = on;
+        if (on)
+            this._wave.set({playing: a.playing, color: this._service.prefs.coverAccent ? a.color : null, animate});
     }
 
     // Another activity took the pill: its content comes in from the side

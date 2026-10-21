@@ -318,37 +318,34 @@ const HILLS = [
     {humps: 8, width: 28, height: 0.6, white: 0.9, alpha: 0.65, speed: 1.43},
 ];
 
-// The shell's slider (drag, keys, scroll) drawn like One UI 9's media seek
-// bar: a straight bar, and over the part already played soft translucent
-// hills in its color that flow toward the handle while the music plays and
-// sink into the bar when it pauses. The handle is the bar's color in a
-// white ring.
-export const WaveSlider = GObject.registerClass(
-class WaveSlider extends Slider.Slider {
-    _init(value) {
-        super._init(value);
-        this._amp = 0;
+// The hills' motion for `actor`: `amp` eases to 1 while waving and back to
+// 0 (sinking them), `time` moves them on; the actor is repainted on each
+// frame while there is something to move.
+class WaveMotion {
+    constructor(actor) {
+        this._actor = actor;
+        this.amp = 0;
+        this.time = 0;
         this._target = 0;
-        this._time = 0;
         this._animate = false;
-        this._timeline = new Clutter.Timeline({actor: this, duration: 1000, repeat_count: -1});
+        this._timeline = new Clutter.Timeline({actor, duration: 1000, repeat_count: -1});
         this._timeline.connect('new-frame', () => this._frame());
-        this.connect('notify::mapped', () => this._syncTimeline());
-        this.connect('destroy', () => this._timeline.stop());
+        actor.connect('notify::mapped', () => this._sync());
+        actor.connect('destroy', () => this._timeline.stop());
     }
 
-    setWaving(on, animate) {
+    set(on, animate) {
         this._animate = animate;
         this._target = on ? 1 : 0;
-        if (!animate && this._amp !== this._target) {
-            this._amp = this._target;
-            this.queue_repaint();
+        if (!animate && this.amp !== this._target) {
+            this.amp = this._target;
+            this._actor.queue_repaint();
         }
-        this._syncTimeline();
+        this._sync();
     }
 
-    _syncTimeline() {
-        const run = this._animate && this.mapped && (this._target > 0 || this._amp > 0);
+    _sync() {
+        const run = this._animate && this._actor.mapped && (this._target > 0 || this.amp > 0);
         if (run && !this._timeline.is_playing()) {
             this._last = GLib.get_monotonic_time();
             this._timeline.start();
@@ -361,13 +358,61 @@ class WaveSlider extends Slider.Slider {
         const now = GLib.get_monotonic_time();
         const dt = Math.min(0.1, (now - this._last) / 1e6);
         this._last = now;
-        this._time += dt * this._amp;
-        this._amp += (this._target - this._amp) * (1 - Math.exp(-dt * 5));
-        if (Math.abs(this._target - this._amp) < 0.01)
-            this._amp = this._target;
-        this.queue_repaint();
-        if (this._amp === 0)
-            this._syncTimeline();
+        this.time += dt * this.amp;
+        this.amp += (this._target - this.amp) * (1 - Math.exp(-dt * 5));
+        if (Math.abs(this._target - this.amp) < 0.01)
+            this.amp = this._target;
+        this._actor.queue_repaint();
+        if (this.amp === 0)
+            this._sync();
+    }
+}
+
+// The hills standing on the line `y` from `start` to `end`, `height` tall
+// at most, in `color` (a Cogl color) faded toward `top`; `alpha` scales
+// how opaque they are.
+function paintHills(cr, {start, end, y, top, height, motion, color, alpha = 1}) {
+    const span = end - start;
+    for (const [i, h] of HILLS.entries()) {
+        const peak = height * h.height * motion.amp;
+        const shift = h.speed * motion.time + i * 0.37;
+        const humps = Math.max(0.5, Math.min(h.humps, span / h.width));
+        cr.moveTo(start, y);
+        for (let x = start; x <= end; x += 2) {
+            const t = (x - start) / span;
+            // The humps move on, and the envelope sizes them by where
+            // they are: born flat at the start, at their tallest
+            // halfway, flat again at the end.
+            // (Squared: smooth valleys, no cusp where humps meet.)
+            const hump = Math.sin(Math.PI * (humps * t - shift)) ** 2;
+            const size = Math.pow(Math.sin(Math.PI * t), 1.5);
+            cr.lineTo(x, y - peak * size * hump);
+        }
+        cr.lineTo(end, y);
+        cr.closePath();
+        const mix = v => (v + (255 - v) * h.white) / 255;
+        const grad = new Cairo.LinearGradient(0, top, 0, y);
+        grad.addColorStopRGBA(0, mix(color.red), mix(color.green), mix(color.blue), h.alpha * alpha);
+        grad.addColorStopRGBA(1, mix(color.red), mix(color.green), mix(color.blue), h.alpha * alpha * 0.45);
+        cr.setSource(grad);
+        cr.fill();
+    }
+}
+
+// The shell's slider (drag, keys, scroll) drawn like One UI 9's media seek
+// bar: a straight bar, and over the part already played soft translucent
+// hills in its color that flow toward the handle while the music plays and
+// sink into the bar when it pauses. The handle is the bar's color in a
+// white ring.
+export const WaveSlider = GObject.registerClass(
+class WaveSlider extends Slider.Slider {
+    _init(value) {
+        super._init(value);
+        this._motion = new WaveMotion(this);
+    }
+
+    setWaving(on, animate) {
+        this._motion.set(on, animate);
     }
 
     // Room for the hills over the bar; the handle sits on the bar.
@@ -402,37 +447,14 @@ class WaveSlider extends Slider.Slider {
 
         // The hills, standing on the played bar from its start to the handle.
         const span = handleX - start;
-        if (this._amp > 0 && span > 2) {
-            const top = y - HILLS_HEIGHT * HILLS_START;
+        if (this._motion.amp > 0 && span > 2) {
             // Taller early in the track (as in One UI), down to their
             // height by halfway; growing from flat over the first pixels
             // so they aren't spikes.
             const early = 1 + (HILLS_START - 1) * Math.max(0, 1 - 2 * this._value / this._maxValue);
             const grow = Math.min(1, span / HILLS_GROW) * early;
-            for (const [i, h] of HILLS.entries()) {
-                const peak = HILLS_HEIGHT * h.height * this._amp * grow;
-                const shift = h.speed * this._time + i * 0.37;
-                const humps = Math.max(0.5, Math.min(h.humps, span / h.width));
-                cr.moveTo(start, y);
-                for (let x = start; x <= handleX; x += 2) {
-                    const t = (x - start) / span;
-                    // The humps move on, and the envelope sizes them by where
-                    // they are: born flat at the start, at their tallest
-                    // halfway, flat again at the handle.
-                    // (Squared: smooth valleys, no cusp where humps meet.)
-                    const hump = Math.sin(Math.PI * (humps * t - shift)) ** 2;
-                    const size = Math.pow(Math.sin(Math.PI * t), 1.5);
-                    cr.lineTo(x, y - peak * size * hump);
-                }
-                cr.lineTo(handleX, y);
-                cr.closePath();
-                const mix = v => (v + (255 - v) * h.white) / 255;
-                const grad = new Cairo.LinearGradient(0, top, 0, y);
-                grad.addColorStopRGBA(0, mix(c.red), mix(c.green), mix(c.blue), h.alpha);
-                grad.addColorStopRGBA(1, mix(c.red), mix(c.green), mix(c.blue), h.alpha * 0.45);
-                cr.setSource(grad);
-                cr.fill();
-            }
+            paintHills(cr, {start, end: handleX, y, top: y - HILLS_HEIGHT * HILLS_START,
+                height: HILLS_HEIGHT * grow, motion: this._motion, color: c});
         }
 
         // Played.
@@ -449,6 +471,40 @@ class WaveSlider extends Slider.Slider {
         cr.setSourceColor(c);
         cr.arc(handleX, y, r - 2.5, 0, 2 * Math.PI);
         cr.fill();
+        cr.$dispose();
+    }
+});
+
+// The hills along the whole bottom of a music pill (the lock screen's), as
+// on One UI's: they flow while it plays and sink when it pauses. Drawn
+// behind the pill's content; the pill's round ends are left clear.
+export const PillWave = GObject.registerClass(
+class PillWave extends St.DrawingArea {
+    _init() {
+        super._init({style_class: 'nowbar-pill-wave', x_expand: true, y_expand: true});
+        this._motion = new WaveMotion(this);
+        this._color = null;
+    }
+
+    // `color` #rrggbb (white if none).
+    set({playing, color, animate}) {
+        if (color !== this._colorHex) {
+            const c = Cogl.Color.from_string(color ?? '#ffffff');
+            this._colorHex = color;
+            this._color = c[0] ? c[1] : null;
+            this.queue_repaint();
+        }
+        this._motion.set(playing, animate);
+    }
+
+    vfunc_repaint() {
+        const cr = this.get_context();
+        const [width, height] = this.get_surface_size();
+        const inset = height / 2;
+        if (this._color && this._motion.amp > 0 && width - 2 * inset > 2) {
+            paintHills(cr, {start: inset, end: width - inset, y: height, top: height * 0.4,
+                height: height * 0.45, motion: this._motion, color: this._color, alpha: 0.7});
+        }
         cr.$dispose();
     }
 });
