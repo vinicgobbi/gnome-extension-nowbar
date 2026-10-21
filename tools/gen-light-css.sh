@@ -4,6 +4,8 @@
 # light: the popup's white tints become black ones. Everything from the
 # "the popup" section on is converted; the pill above it is kept as is, and
 # so is the "over the cover" section (white on a darkened cover either way).
+# The lock screen is dark on both themes: the popup's rules are added once
+# more, white and under .nowbar-lock, for the card shown there.
 #
 #   tools/gen-light-css.sh
 
@@ -23,6 +25,12 @@ grep -q '^/\* --- the popup' "$src" || { echo "gen-light-css: no popup section m
        popup && !cover { gsub(/rgba\(255, 255, 255,/, "rgba(0, 0, 0,") }
        /^\/\* --- end of over the cover/ { cover = 0 }
        { print }' "$src"
+  echo
+  echo "/* --- the lock screen's card: the popup's rules again, white --- */"
+  echo
+  awk '/^\/\* --- the popup/ { popup = 1 }
+       popup && /^\./ { gsub(/, \./, ", .nowbar-lock ."); $0 = ".nowbar-lock " $0 }
+       popup { print }' "$src"
 } > "$out"
 
 echo "gen-light-css: wrote $out"

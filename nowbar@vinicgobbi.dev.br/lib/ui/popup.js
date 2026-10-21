@@ -11,7 +11,9 @@ import {button, easeToNatural, hbox, label, vbox} from './widgets.js';
 // u show hidden, c options, q close.
 
 export class PopupContent {
-    // ctx = {service, closeMenu(), openPreferences()}
+    // ctx = {service, closeMenu(), openPreferences(), locked}. On the lock
+    // screen (`locked`): no options, the lock screen's cards, and the dots
+    // alone, under the card (scroll switches).
     constructor(ctx) {
         this._ctx = ctx;
         this._service = ctx.service;
@@ -28,13 +30,20 @@ export class PopupContent {
             onClick: () => this._service.showHidden()});
         const gear = button({icon: 'emblem-system-symbolic', styleClass: 'flat', accessibleName: 'Options',
             onClick: () => ctx.openPreferences()});
+        gear.visible = !!ctx.openPreferences;
         nav.add_child(this._prev);
         nav.add_child(this._dots);
         nav.add_child(this._next);
         nav.add_child(this._hidden);
         nav.add_child(gear);
-        this.actor.add_child(nav);
         this._nav = nav;
+        if (ctx.locked) {
+            this._prev.hide();
+            this._next.hide();
+            nav.add_style_class_name('below');
+        } else {
+            this.actor.add_child(nav);
+        }
 
         // Clipped: while its height eases between two cards, the new one is
         // uncovered instead of squeezed.
@@ -42,6 +51,8 @@ export class PopupContent {
         this.actor.add_child(this._cardBin);
         this._empty = label('Nothing going on right now', 'nowbar-empty', {x_align: Clutter.ActorAlign.CENTER});
         this.actor.add_child(this._empty);
+        if (ctx.locked)
+            this.actor.add_child(nav);
         this._card = null;
         this._cardId = '';
         this._cardKind = null;
@@ -88,7 +99,8 @@ export class PopupContent {
                 dot.remove_style_pseudo_class('checked');
             easeToNatural(dot, 'width', from);
         }
-        this._prev.visible = this._next.visible = this._dots.visible = list.length > 1;
+        this._dots.visible = list.length > 1;
+        this._prev.visible = this._next.visible = this._dots.visible && !this._ctx.locked;
         this._hidden.visible = s.hiddenList.length > 0;
         this._hidden.child.get_last_child().text = `${s.hiddenList.length}`;
 
@@ -99,7 +111,7 @@ export class PopupContent {
             this._card = null;
             this._cardId = '';
         } else {
-            const Kind = cardKind(focused);
+            const Kind = cardKind(focused, !!this._ctx.locked);
             if (this._cardId === focused.id && this._cardKind === Kind) {
                 this._card.update(focused);
             } else {
@@ -173,7 +185,7 @@ export class PopupContent {
             s.dismiss(focused.id);
         else if (ch === 'u')
             s.showHidden();
-        else if (ch === 'c')
+        else if (ch === 'c' && this._ctx.openPreferences)
             this._ctx.openPreferences();
         else if (ch === 'q')
             this._ctx.closeMenu();

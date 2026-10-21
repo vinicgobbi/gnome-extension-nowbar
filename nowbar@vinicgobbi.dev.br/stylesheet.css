@@ -115,6 +115,142 @@
   color: rgba(255, 255, 255, 0.75);
 }
 
+/* --- the lock screen ------------------------------------------------------ */
+
+/* Under the lock screen's top bar, over its wallpaper: the same pill, bigger
+   and on dark glass. Open, the card sits on the wallpaper too, with no frame:
+   the popup's content, white on both shell themes (see
+   tools/gen-light-css.sh). */
+.nowbar-lock-box {
+  margin-top: 48px;
+}
+
+.nowbar-lock-button {
+  border-radius: 99px;
+}
+
+.nowbar-lock-pill {
+  min-height: 28px;
+  padding: 10px 22px;
+  font-size: 1.15em;
+  color: #ffffff;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.nowbar-lock-pill.idle {
+  padding: 10px 14px;
+}
+
+.nowbar-lock-button:hover .nowbar-lock-pill,
+.nowbar-lock-button:active .nowbar-lock-pill {
+  background-color: rgba(40, 40, 40, 0.6);
+}
+
+.nowbar-lock-button .nowbar-lock-pill.urgent {
+  background-color: #c01c28;
+}
+
+.nowbar-lock-button:hover .nowbar-lock-pill.urgent {
+  background-color: #d02a36;
+}
+
+.nowbar-lock-pill .nowbar-row {
+  spacing: 10px;
+}
+
+.nowbar-lock-pill .nowbar-icon {
+  icon-size: 20px;
+  width: 20px;
+}
+
+.nowbar-lock-view {
+  color: #ffffff;
+}
+
+/* The lock screen's "click to unlock" under the shrunk clock. */
+.nowbar-lock-hidden {
+  color: transparent;
+}
+
+.nowbar-lock .nowbar-lock-view .nowbar-popup {
+  width: 400px;
+  spacing: 14px;
+}
+
+.nowbar-lock .nowbar-lock-view .nowbar-card {
+  padding: 18px;
+  border-radius: 28px;
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+/* Music: the cover is the card, the title over its bottom; the seek bar
+   and the controls under it. */
+.nowbar-lock .nowbar-lock-media {
+  spacing: 12px;
+}
+
+.nowbar-lock .nowbar-lock-view .nowbar-lock-cover {
+  height: 240px;
+  padding: 0;
+}
+
+.nowbar-lock .nowbar-lock-cover .nowbar-media-bg,
+.nowbar-lock .nowbar-lock-cover .nowbar-media-scrim {
+  border-radius: 28px;
+}
+
+.nowbar-lock .nowbar-lock-cover .nowbar-media-scrim {
+  background-gradient-start: rgba(0, 0, 0, 0.1);
+  background-gradient-end: rgba(0, 0, 0, 0.7);
+}
+
+.nowbar-lock .nowbar-lock-cover .nowbar-media-body {
+  padding: 16px 20px 18px;
+}
+
+.nowbar-lock .nowbar-lock-cover .nowbar-media-line {
+  font-size: 1.4em;
+  color: #ffffff;
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-seek-box {
+  padding: 0 10px;
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-media-controls {
+  spacing: 14px;
+}
+
+/* The popup's round buttons, bigger. */
+.nowbar-lock .nowbar-lock-media .nowbar-round.solid {
+  width: 64px;
+  height: 64px;
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-round.solid:hover,
+.nowbar-lock .nowbar-lock-media .nowbar-round.solid:active {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-round.solid .nowbar-btn-icon {
+  icon-size: 26px;
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-round.small {
+  width: 44px;
+  height: 44px;
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-round.small:hover,
+.nowbar-lock .nowbar-lock-media .nowbar-round.small:checked {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.nowbar-lock .nowbar-nav.below {
+  padding-top: 2px;
+}
+
 /* --- the popup ------------------------------------------------------------ */
 
 .nowbar-menu {

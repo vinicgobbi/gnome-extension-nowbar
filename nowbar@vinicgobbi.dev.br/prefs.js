@@ -164,6 +164,10 @@ export default class NowbarPreferences extends ExtensionPreferences {
         pill.add(switchRow(s, 'cover-accent', 'Colors from the album cover and the sky'));
         pill.add(switchRow(s, 'animations', 'Animations'));
         look.add(pill);
+        const lock = new Adw.PreferencesGroup({title: 'Lock screen'});
+        lock.add(switchRow(s, 'lock-screen', 'Show the pill on the lock screen',
+            'At the top; a click opens the cards. Anything that would open an app stays off until you unlock'));
+        look.add(lock);
         window.add(look);
 
         // --- Weather

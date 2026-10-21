@@ -43,6 +43,9 @@ export class NowbarService extends EventEmitter {
         this.knownIds = {};
         this.manualUntil = 0;
         this.popupOpen = false;
+        // On the lock screen: nothing that opens a window or reaches the
+        // session's files (see _lockSafe).
+        this.locked = false;
         this.allActivities = [];
         this.activities = [];
         this.hiddenList = [];
@@ -256,7 +259,7 @@ export class NowbarService extends EventEmitter {
 
     _collect() {
         const t = this.now;
-        const list = [];
+        let list = [];
         list.push(Model.recordingActivity(this.capture.recording, t));
         if (this.capture.recorded)
             list.push(this._gnomeActions(Model.recordedActivity(this.capture.recorded)));
@@ -303,7 +306,24 @@ export class NowbarService extends EventEmitter {
         }
         for (const k in this.pushes)
             list.push(Model.pushActivity(this.pushes[k], t));
-        return list.filter(a => !!a);
+        list = list.filter(a => !!a);
+        return this.locked ? list.map(a => this._lockSafe(a)) : list;
+    }
+
+    // What the lock screen may do with an activity: no action that opens an
+    // app or a folder (it would open behind the lock), no copying a
+    // screenshot, no raising a player. act() only runs the actions left.
+    _lockSafe(a) {
+        a.actions = a.actions.filter(x => !x.opensApp && x.id !== 'copy');
+        a.canRaise = false;
+        return a;
+    }
+
+    setLocked(locked) {
+        if (this.locked === locked)
+            return;
+        this.locked = locked;
+        this._update();
     }
 
     _queueUpdate() {

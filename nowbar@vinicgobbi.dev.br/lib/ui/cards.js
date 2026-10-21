@@ -142,6 +142,10 @@ export class MediaCard {
         this.actor.add_child(this._bg);
         this.actor.add_child(this._scrim);
         this.actor.add_child(body);
+        this._body = body;
+        // What the cover and its colors are drawn on (LockMediaCard moves the
+        // rest out of it).
+        this._surface = this.actor;
 
         // Where the sound comes from; a click opens the player.
         this._source = new St.Button({style_class: 'nowbar-media-source', x_align: Clutter.ActorAlign.START,
@@ -203,6 +207,7 @@ export class MediaCard {
         this._next = ctl('media-skip-forward-symbolic', 'next', 'Next', 'solid');
         this._loop = ctl('media-playlist-repeat-symbolic', 'loop', 'Repeat', 'small');
         body.add_child(controls);
+        this._controls = controls;
 
         this._volumeRow = hbox({style_class: 'nowbar-volume-row'});
         this._volumeIcon = new St.Icon({icon_name: 'audio-volume-medium-symbolic', style_class: 'nowbar-volume-icon'});
@@ -323,9 +328,9 @@ export class MediaCard {
             this._style(this._bg, path ? backgroundStyle(path) : null);
             this._bg.visible = this._scrim.visible = !!path;
             if (path)
-                this.actor.add_style_class_name('has-cover');
+                this._surface.add_style_class_name('has-cover');
             else
-                this.actor.remove_style_class_name('has-cover');
+                this._surface.remove_style_class_name('has-cover');
         }
         const coverOpacity = a.playing ? 255 : 150;
         if (this._coverOpacity !== coverOpacity) {
@@ -340,7 +345,7 @@ export class MediaCard {
         // The cover's colors: card background (under the cover, and in its
         // place when there's none), the bars, shuffle and repeat when on.
         const accent = a.color ?? null;
-        this._style(this.actor, a.surface ? surfaceGradient(a.surface) : null);
+        this._style(this._surface, a.surface ? surfaceGradient(a.surface) : null);
         const bar = accent ? `-barlevel-active-background-color: ${accent}; color: ${accent};` : null;
         this._style(this._seek, bar);
         this._style(this._volume, bar);
@@ -394,6 +399,34 @@ export class MediaCard {
     }
 }
 
+// On the lock screen, as on One UI's: the cover is the card, with the app
+// and "title • artist" over it, and the seek bar and the controls sit under
+// it, on the wallpaper. No volume: that one stays in the session.
+export class LockMediaCard extends MediaCard {
+    constructor(ctx, a) {
+        super(ctx, a);
+        const cover = this.actor;
+        cover.add_style_class_name('nowbar-lock-cover');
+        // Down to the bottom of the cover (a bin won't align it there).
+        this._body.insert_child_at_index(new St.Widget({y_expand: true}), 0);
+        this.actor = vbox({style_class: 'nowbar-lock-media', x_expand: true});
+        this.actor.add_child(cover);
+        for (const part of [this._seekBox, this._controls]) {
+            this._body.remove_child(part);
+            this.actor.add_child(part);
+        }
+        this._volumeRow.hide();
+    }
+
+    update(a) {
+        super.update(a);
+        this._volumeRow.visible = false;
+        // As tall as the lock screen has room for (ctx.coverHeight).
+        if (this._ctx.coverHeight && this._surface.height !== this._ctx.coverHeight)
+            this._surface.height = this._ctx.coverHeight;
+    }
+}
+
 // --- weather -------------------------------------------------------------------
 
 export class WeatherCard {
@@ -414,6 +447,8 @@ export class WeatherCard {
         // The place: a click opens GNOME Weather, where it is picked.
         this._place = button({icon: 'mark-location-symbolic', styleClass: 'flat nowbar-place',
             onClick: () => {
+                if (ctx.service.locked)
+                    return;
                 ctx.closeMenu();
                 ctx.service.weather.openApp();
             }});
@@ -526,9 +561,10 @@ export class WeatherCard {
     }
 }
 
-export function cardKind(a) {
+// `locked`: the lock screen's look, where it has one.
+export function cardKind(a, locked = false) {
     if (a.module === 'media')
-        return MediaCard;
+        return locked ? LockMediaCard : MediaCard;
     if (a.id === 'brief' && a.weather)
         return WeatherCard;
     return Card;

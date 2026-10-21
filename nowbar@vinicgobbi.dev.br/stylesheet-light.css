@@ -117,6 +117,142 @@
   color: rgba(255, 255, 255, 0.75);
 }
 
+/* --- the lock screen ------------------------------------------------------ */
+
+/* Under the lock screen's top bar, over its wallpaper: the same pill, bigger
+   and on dark glass. Open, the card sits on the wallpaper too, with no frame:
+   the popup's content, white on both shell themes (see
+   tools/gen-light-css.sh). */
+.nowbar-lock-box {
+  margin-top: 48px;
+}
+
+.nowbar-lock-button {
+  border-radius: 99px;
+}
+
+.nowbar-lock-pill {
+  min-height: 28px;
+  padding: 10px 22px;
+  font-size: 1.15em;
+  color: #ffffff;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.nowbar-lock-pill.idle {
+  padding: 10px 14px;
+}
+
+.nowbar-lock-button:hover .nowbar-lock-pill,
+.nowbar-lock-button:active .nowbar-lock-pill {
+  background-color: rgba(40, 40, 40, 0.6);
+}
+
+.nowbar-lock-button .nowbar-lock-pill.urgent {
+  background-color: #c01c28;
+}
+
+.nowbar-lock-button:hover .nowbar-lock-pill.urgent {
+  background-color: #d02a36;
+}
+
+.nowbar-lock-pill .nowbar-row {
+  spacing: 10px;
+}
+
+.nowbar-lock-pill .nowbar-icon {
+  icon-size: 20px;
+  width: 20px;
+}
+
+.nowbar-lock-view {
+  color: #ffffff;
+}
+
+/* The lock screen's "click to unlock" under the shrunk clock. */
+.nowbar-lock-hidden {
+  color: transparent;
+}
+
+.nowbar-lock .nowbar-lock-view .nowbar-popup {
+  width: 400px;
+  spacing: 14px;
+}
+
+.nowbar-lock .nowbar-lock-view .nowbar-card {
+  padding: 18px;
+  border-radius: 28px;
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+/* Music: the cover is the card, the title over its bottom; the seek bar
+   and the controls under it. */
+.nowbar-lock .nowbar-lock-media {
+  spacing: 12px;
+}
+
+.nowbar-lock .nowbar-lock-view .nowbar-lock-cover {
+  height: 240px;
+  padding: 0;
+}
+
+.nowbar-lock .nowbar-lock-cover .nowbar-media-bg,
+.nowbar-lock .nowbar-lock-cover .nowbar-media-scrim {
+  border-radius: 28px;
+}
+
+.nowbar-lock .nowbar-lock-cover .nowbar-media-scrim {
+  background-gradient-start: rgba(0, 0, 0, 0.1);
+  background-gradient-end: rgba(0, 0, 0, 0.7);
+}
+
+.nowbar-lock .nowbar-lock-cover .nowbar-media-body {
+  padding: 16px 20px 18px;
+}
+
+.nowbar-lock .nowbar-lock-cover .nowbar-media-line {
+  font-size: 1.4em;
+  color: #ffffff;
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-seek-box {
+  padding: 0 10px;
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-media-controls {
+  spacing: 14px;
+}
+
+/* The popup's round buttons, bigger. */
+.nowbar-lock .nowbar-lock-media .nowbar-round.solid {
+  width: 64px;
+  height: 64px;
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-round.solid:hover,
+.nowbar-lock .nowbar-lock-media .nowbar-round.solid:active {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-round.solid .nowbar-btn-icon {
+  icon-size: 26px;
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-round.small {
+  width: 44px;
+  height: 44px;
+}
+
+.nowbar-lock .nowbar-lock-media .nowbar-round.small:hover,
+.nowbar-lock .nowbar-lock-media .nowbar-round.small:checked {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.nowbar-lock .nowbar-nav.below {
+  padding-top: 2px;
+}
+
 /* --- the popup ------------------------------------------------------------ */
 
 .nowbar-menu {
@@ -535,6 +671,430 @@
 }
 
 .nowbar-weather-rain-label {
+  font-weight: bold;
+}
+
+
+/* --- the lock screen's card: the popup's rules again, white --- */
+
+/* --- the popup ------------------------------------------------------------ */
+
+.nowbar-lock .nowbar-menu {
+  padding: 8px;
+}
+
+.nowbar-lock .nowbar-popup {
+  width: 360px;
+  spacing: 8px;
+}
+
+.nowbar-lock .nowbar-nav {
+  spacing: 4px;
+}
+
+.nowbar-lock .nowbar-dots {
+  spacing: 6px;
+}
+
+.nowbar-lock .nowbar-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.nowbar-lock .nowbar-dot:checked {
+  width: 18px;
+  background-color: -st-accent-color;
+}
+
+.nowbar-lock .nowbar-empty {
+  padding: 24px 0;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.nowbar-lock .nowbar-card {
+  spacing: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.nowbar-lock .nowbar-card.urgent,
+.nowbar-lock .nowbar-popup.urgent .nowbar-card {
+  background-color: rgba(192, 28, 40, 0.35);
+}
+
+.nowbar-lock .nowbar-card-head {
+  spacing: 12px;
+}
+
+.nowbar-lock .nowbar-card-icon-bin {
+  width: 42px;
+  height: 42px;
+  border-radius: 99px;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.nowbar-lock .nowbar-card-icon {
+  icon-size: 22px;
+}
+
+.nowbar-lock .nowbar-card-title {
+  font-size: 1.15em;
+  font-weight: bold;
+}
+
+.nowbar-lock .nowbar-card-subtitle {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.nowbar-lock .nowbar-card-detail {
+  font-size: 0.9em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.nowbar-lock .nowbar-card-progress {
+  height: 6px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.nowbar-lock .nowbar-card-progress .nowbar-bar-fill {
+  border-radius: 3px;
+}
+
+.nowbar-lock .nowbar-card-details {
+  spacing: 2px;
+}
+
+.nowbar-lock .nowbar-card-actions {
+  spacing: 6px;
+}
+
+/* buttons */
+
+.nowbar-lock .nowbar-btn {
+  padding: 6px 12px;
+  border-radius: 99px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nowbar-lock .nowbar-btn:hover,
+.nowbar-lock .nowbar-btn:focus {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.nowbar-lock .nowbar-btn:active {
+  background-color: rgba(255, 255, 255, 0.24);
+}
+
+.nowbar-lock .nowbar-btn.flat {
+  background-color: transparent;
+  padding: 6px 8px;
+}
+
+.nowbar-lock .nowbar-btn.flat:hover,
+.nowbar-lock .nowbar-btn.flat:focus {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nowbar-lock .nowbar-btn.primary {
+  background-color: -st-accent-color;
+  color: -st-accent-fg-color;
+}
+
+.nowbar-lock .nowbar-btn-box {
+  spacing: 6px;
+}
+
+.nowbar-lock .nowbar-btn-icon {
+  icon-size: 16px;
+}
+
+.nowbar-lock .nowbar-round:checked {
+  background-color: -st-accent-color;
+  color: -st-accent-fg-color;
+}
+
+/* --- media --------------------------------------------------------------- */
+
+.nowbar-lock .nowbar-media {
+  padding: 0;
+}
+
+/* The cover over the whole card, and a veil that darkens it more toward
+   the controls. */
+.nowbar-lock .nowbar-media-bg,
+.nowbar-lock .nowbar-media-scrim {
+  border-radius: 18px;
+}
+
+.nowbar-lock .nowbar-media-scrim {
+  background-gradient-direction: vertical;
+  background-gradient-start: rgba(0, 0, 0, 0.35);
+  background-gradient-end: rgba(0, 0, 0, 0.72);
+}
+
+.nowbar-lock .nowbar-media-body {
+  spacing: 10px;
+  padding: 12px 16px 14px;
+}
+
+/* Where the sound comes from: app icon, name, and a chevron when it opens. */
+.nowbar-lock .nowbar-media-source {
+  border-radius: 99px;
+  padding: 3px 8px 3px 4px;
+}
+
+.nowbar-lock .nowbar-media-source:hover,
+.nowbar-lock .nowbar-media-source:focus {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nowbar-lock .nowbar-media-source-box {
+  spacing: 6px;
+}
+
+.nowbar-lock .nowbar-media-app-icon {
+  icon-size: 16px;
+}
+
+.nowbar-lock .nowbar-media-source-label {
+  font-size: 0.85em;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.nowbar-lock .nowbar-media-source-open {
+  icon-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* "Title • artist", scrolling when it doesn't fit. */
+.nowbar-lock .nowbar-media-line {
+  font-size: 1.1em;
+}
+
+.nowbar-lock .nowbar-seek {
+  -barlevel-height: 5px;
+  -slider-handle-radius: 9px;
+}
+
+.nowbar-lock .nowbar-seek-box {
+  spacing: 2px;
+}
+
+.nowbar-lock .nowbar-times {
+  padding: 0 2px;
+}
+
+.nowbar-lock .nowbar-time {
+  font-size: 0.8em;
+  font-feature-settings: "tnum";
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.nowbar-lock .nowbar-volume-row {
+  spacing: 10px;
+  padding: 0 4px;
+}
+
+.nowbar-lock .nowbar-media-controls {
+  spacing: 8px;
+}
+
+/* Fixed sizes and no padding: circles, whatever the icon. */
+.nowbar-lock .nowbar-round {
+  border-radius: 99px;
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  background-color: transparent;
+}
+
+.nowbar-lock .nowbar-round:hover,
+.nowbar-lock .nowbar-round:focus {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.nowbar-lock .nowbar-round .nowbar-btn-icon {
+  icon-size: 20px;
+}
+
+.nowbar-lock .nowbar-round.small {
+  width: 36px;
+  height: 36px;
+}
+
+.nowbar-lock .nowbar-round.small .nowbar-btn-icon {
+  icon-size: 16px;
+}
+
+/* Shuffle / repeat on: tinted (with the cover's color, set by the card). */
+.nowbar-lock .nowbar-round.small:checked {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: -st-accent-color;
+}
+
+/* Previous, play and next: the same translucent circles. */
+.nowbar-lock .nowbar-round.solid {
+  width: 50px;
+  height: 50px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nowbar-lock .nowbar-round.solid:hover,
+.nowbar-lock .nowbar-round.solid:focus {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.nowbar-lock .nowbar-round.solid .nowbar-btn-icon {
+  icon-size: 22px;
+}
+
+.nowbar-lock .nowbar-volume-icon {
+  icon-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* --- over the cover -------------------------------------------------------
+   White on the darkened cover in light and dark shells alike:
+   tools/gen-light-css.sh leaves this section as it is. */
+
+.nowbar-lock .nowbar-media.has-cover,
+.nowbar-lock .nowbar-media.has-cover .nowbar-media-line,
+.nowbar-lock .nowbar-media.has-cover .nowbar-btn-icon,
+.nowbar-lock .nowbar-media.has-cover .nowbar-media-app-icon {
+  color: #ffffff;
+}
+
+.nowbar-lock .nowbar-media.has-cover .nowbar-media-source-label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.nowbar-lock .nowbar-media.has-cover .nowbar-media-source-open,
+.nowbar-lock .nowbar-media.has-cover .nowbar-time,
+.nowbar-lock .nowbar-media.has-cover .nowbar-volume-icon {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nowbar-lock .nowbar-media.has-cover .nowbar-media-source:hover,
+.nowbar-lock .nowbar-media.has-cover .nowbar-media-source:focus,
+.nowbar-lock .nowbar-media.has-cover .nowbar-round:hover,
+.nowbar-lock .nowbar-media.has-cover .nowbar-round:focus,
+.nowbar-lock .nowbar-media.has-cover .nowbar-round.small:checked {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+
+.nowbar-lock .nowbar-media.has-cover .nowbar-round.solid {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.nowbar-lock .nowbar-media.has-cover .nowbar-round.solid:hover,
+.nowbar-lock .nowbar-media.has-cover .nowbar-round.solid:focus {
+  background-color: rgba(255, 255, 255, 0.26);
+}
+
+.nowbar-lock .nowbar-media.has-cover .nowbar-slider {
+  -barlevel-background-color: rgba(255, 255, 255, 0.28);
+}
+
+/* --- end of over the cover --- */
+
+/* --- weather ------------------------------------------------------------- */
+
+.nowbar-lock .nowbar-weather-icon {
+  icon-size: 48px;
+}
+
+.nowbar-lock .nowbar-weather-temp {
+  font-size: 2em;
+  font-weight: 300;
+}
+
+.nowbar-lock .nowbar-place {
+  font-weight: bold;
+}
+
+.nowbar-lock .nowbar-weather-facts {
+  spacing: 14px;
+}
+
+.nowbar-lock .nowbar-fact {
+  spacing: 4px;
+}
+
+.nowbar-lock .nowbar-fact-icon {
+  icon-size: 14px;
+}
+
+.nowbar-lock .nowbar-weather-hours {
+  spacing: 4px;
+  padding: 8px 0;
+}
+
+.nowbar-lock .nowbar-hour {
+  spacing: 4px;
+}
+
+.nowbar-lock .nowbar-hour-label {
+  font-size: 0.85em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.nowbar-lock .nowbar-hour-icon {
+  icon-size: 18px;
+}
+
+.nowbar-lock .nowbar-weather-days {
+  spacing: 6px;
+}
+
+.nowbar-lock .nowbar-day {
+  spacing: 8px;
+}
+
+.nowbar-lock .nowbar-day-name {
+  min-width: 72px;
+}
+
+.nowbar-lock .nowbar-day-icon {
+  icon-size: 16px;
+}
+
+.nowbar-lock .nowbar-day-temp {
+  min-width: 32px;
+  font-feature-settings: "tnum";
+}
+
+.nowbar-lock .nowbar-day-track {
+  height: 5px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.nowbar-lock .nowbar-day-fill {
+  height: 5px;
+  border-radius: 3px;
+  background-gradient-direction: horizontal;
+  background-gradient-start: #62a0ea;
+  background-gradient-end: #f8e45c;
+}
+
+.nowbar-lock .nowbar-weather-rain {
+  spacing: 8px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background-color: rgba(61, 143, 224, 0.2);
+}
+
+.nowbar-lock .nowbar-weather-rain-icon {
+  icon-size: 16px;
+  color: #62a0ea;
+}
+
+.nowbar-lock .nowbar-weather-rain-label {
   font-weight: bold;
 }
 

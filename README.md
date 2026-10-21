@@ -59,6 +59,14 @@ Switches like Do Not Disturb, night light or screen recording are left to
 GNOME's Quick Settings; when one is on, the Now Bar shows it as an activity
 (with a button to turn it off).
 
+### Lock screen
+
+A bigger pill sits at the top of the lock screen. Click it to open the cards
+under it (the clock steps aside), scroll over it to switch activities; a click
+anywhere else brings up the password prompt as usual. Anything that would
+open an app or a folder (open the player, open or copy a screenshot, GNOME
+Weather) is off until you unlock. Turn it off in Options → Look → Lock screen.
+
 ## Scripts and shortcuts
 
 The extension answers on the session bus as `br.dev.vinicgobbi.NowBar`

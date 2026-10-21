@@ -36,6 +36,7 @@
     <key name="show-count" type="b"><default>true</default><summary>The 2/4 marker</summary></key>
     <key name="cover-accent" type="b"><default>true</default><summary>Colors from the album cover and the sky</summary></key>
     <key name="animations" type="b"><default>true</default><summary>Animations</summary></key>
+    <key name="lock-screen" type="b"><default>true</default><summary>The pill on the lock screen</summary></key>
 
 
     <!-- Weather -->
